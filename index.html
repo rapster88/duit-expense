@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E9EFEC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1715" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Duit">
+<title>Duit</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EFEC; --surface:#F8FAF9; --ink:#15231F; --muted:#5C6E68; --line:#CFDAD5;
+  --accent:#1F6B57; --accent-ink:#FFFFFF; --hi:#E3A63B; --danger:#B04336; --scrim:rgba(12,22,19,.42);
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1715; --surface:#17221F; --ink:#E4ECE8; --muted:#8FA39C; --line:#2A3833;
+    --accent:#4FB08F; --accent-ink:#06130F; --hi:#E9B55A; --danger:#E0786B; --scrim:rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1715; --surface:#17221F; --ink:#E4ECE8; --muted:#8FA39C; --line:#2A3833;
+  --accent:#4FB08F; --accent-ink:#06130F; --hi:#E9B55A; --danger:#E0786B; --scrim:rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.wrap{max-width:520px;margin:0 auto;padding:12px 18px 128px}
+
+/* Header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0 4px}
+.brand{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.01em}
+.icon-btn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink)}
+.icon-btn:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.icon-btn svg{width:22px;height:22px}
+
+.month{display:flex;align-items:center;gap:4px;margin-top:14px}
+.month-label{font-size:15px;color:var(--muted);min-width:0;flex:1}
+.month .icon-btn{width:40px;height:40px}
+.total{font-family:var(--display);font-weight:700;font-size:clamp(44px,13vw,64px);line-height:1;letter-spacing:-.03em;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.total .cur{font-size:.42em;font-weight:500;letter-spacing:0;color:var(--muted);margin-right:.25em;vertical-align:.55em}
+.sub{color:var(--muted);font-size:14px}
+
+/* Category strip */
+.strip{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:18px 0 12px;background:var(--line);gap:2px}
+.strip span{display:block;height:100%;min-width:3px}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px 6px 9px;font-size:14px}
+.chip .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.chip .amt{color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.legend.filtering .chip[aria-pressed="false"]{opacity:.5}
+
+/* List */
+.day{margin-top:26px}
+.day-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted);padding:0 2px 6px;border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:transparent;padding:12px 2px;border-bottom:1px solid var(--line)}
+.row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.row .bar{width:4px;align-self:stretch;border-radius:2px;flex:none}
+.row .what{flex:1;min-width:0}
+.row .cat{font-weight:700;font-size:15px}
+.row .subname{font-weight:400;color:var(--muted)}
+.row .note{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .val{font-family:var(--display);font-weight:500;font-size:17px;white-space:nowrap}
+
+.empty{margin-top:48px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font-family:var(--display);font-size:20px;font-weight:700;margin-bottom:4px}
+
+/* Bottom action */
+.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 62%,transparent);display:flex;justify-content:center;z-index:5}
+.primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:54px;padding:0 26px;border-radius:16px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:17px;width:100%;max-width:484px}
+.primary svg{width:20px;height:20px}
+.primary:active{transform:translateY(1px)}
+.ghost{min-height:48px;padding:0 18px;border-radius:14px;border:1px solid var(--line);background:transparent;font-weight:700}
+.danger{color:var(--danger)}
+
+/* Sheets */
+.scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;max-height:92%;overflow:auto;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .24s cubic-bezier(.2,.8,.2,1);z-index:11;visibility:hidden}
+.sheet.show{transform:none;visibility:visible}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+.sheet h2{font-family:var(--display);font-size:20px;font-weight:700;margin:4px 0 14px}
+.till{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:18px}
+.till .cur{font-family:var(--display);font-size:22px;color:var(--muted);font-weight:500}
+.till input{flex:1;min-width:0;border:0;background:transparent;font-family:var(--display);font-weight:700;font-size:48px;line-height:1.1;letter-spacing:-.02em;padding:0;outline:none;font-variant-numeric:tabular-nums}
+.till input::placeholder{color:var(--line)}
+.field-label{display:block;font-size:14px;color:var(--muted);margin:14px 0 8px}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cats .chip{padding:9px 14px 9px 11px;font-size:15px}
+.cats .chip[aria-checked="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:transparent;border-radius:10px;padding:8px 12px;font-size:14px}
+.seg button[aria-checked="true"]{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent);font-weight:700}
+.text{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:10px 12px}
+.two{display:grid;grid-template-columns:1fr;gap:0}
+.actions{display:flex;gap:10px;margin-top:22px;align-items:center}
+.actions .primary{flex:1}
+.err{color:var(--danger);font-size:14px;min-height:20px;margin-top:6px}
+
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.set-row .x{border:0;background:transparent;color:var(--muted);width:40px;height:40px;border-radius:10px;font-size:20px}
+.set-row .x:hover{color:var(--danger)}
+.add-cat{display:flex;gap:8px;margin-top:10px}
+.add-cat .text{flex:1}
+.subs{margin-top:10px;padding-left:12px;border-left:3px solid var(--line)}
+.subs .chip{padding:5px 11px;font-size:13px}
+.cats.subpick .chip{padding:7px 13px;font-size:14px}
+.hint{font-size:14px;color:var(--muted);margin:-2px 0 4px}
+.set-row.cat-row{cursor:pointer;width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;padding:12px 2px;font:inherit;color:inherit}
+.set-row.cat-row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.cat-row .meta{color:var(--muted);font-size:13px;display:block;margin-top:2px}
+.cat-row .chev{color:var(--muted);flex:none}
+.swatches{display:flex;flex-wrap:wrap;gap:10px}
+.swatch{width:36px;height:36px;border-radius:50%;border:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.swatch[aria-checked="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--ink)}
+.sub-edit{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.sub-edit .text{flex:1;min-height:44px}
+.sub-edit .x{border:0;background:transparent;color:var(--muted);width:40px;height:40px;border-radius:10px;font-size:20px;flex:none}
+.sub-edit .x:hover{color:var(--danger)}
+.status{font-size:14px;color:var(--muted);margin-top:18px}
+.status b{color:var(--ink)}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-size:15px;display:flex;gap:14px;align-items:center;opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:calc(100% - 36px)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:transparent;color:var(--hi);font-weight:700;padding:4px}
+
+@media (prefers-reduced-motion: reduce){
+  .sheet,.scrim,.toast{transition:none}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div class="brand">Duit</div>
+    <button class="icon-btn" id="openSettings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </header>
+
+  <section aria-label="Month summary">
+    <div class="month">
+      <button class="icon-btn" id="prevMonth" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="month-label" id="monthLabel" aria-live="polite"></div>
+      <button class="icon-btn" id="nextMonth" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="total" id="total"></div>
+    <div class="sub" id="sub"></div>
+    <div class="strip" id="strip" aria-hidden="true"></div>
+    <div class="legend" id="legend" role="group" aria-label="Filter by category"></div>
+    <div class="legend subs" id="subLegend" role="group" aria-label="Filter by subcategory" hidden></div>
+  </section>
+
+  <section id="list" aria-label="Expenses"></section>
+</main>
+
+<div class="dock">
+  <button class="primary" id="addBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Add expense
+  </button>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- Expense sheet -->
+<div class="sheet" id="expSheet" role="dialog" aria-modal="true" aria-labelledby="expTitle">
+  <div class="grab"></div>
+  <h2 id="expTitle">Add expense</h2>
+  <label class="till">
+    <span class="cur" id="tillCur">RM</span>
+    <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount">
+  </label>
+  <span class="field-label" id="catLabel">Category</span>
+  <div class="cats" id="catPick" role="radiogroup" aria-labelledby="catLabel"></div>
+  <div id="subWrap" hidden>
+    <span class="field-label" id="subLabel">Subcategory (optional)</span>
+    <div class="cats subpick" id="subPick" role="radiogroup" aria-labelledby="subLabel"></div>
+  </div>
+  <label class="field-label" for="note">Note (optional)</label>
+  <input class="text" id="note" maxlength="120" placeholder="e.g. nasi lemak with team" autocomplete="off">
+  <div class="two">
+    <div>
+      <label class="field-label" for="date">Date</label>
+      <input class="text" id="date" type="date">
+    </div>
+    <div>
+      <span class="field-label" id="payLabel">Paid with (optional)</span>
+      <div class="seg" id="payPick" role="radiogroup" aria-labelledby="payLabel"></div>
+    </div>
+  </div>
+  <div class="err" id="expErr" role="alert"></div>
+  <div class="actions">
+    <button class="ghost danger" id="delBtn" hidden>Delete</button>
+    <button class="primary" id="saveBtn">Save expense</button>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="grab"></div>
+  <h2 id="setTitle">Settings</h2>
+  <label class="field-label" for="currency">Currency symbol</label>
+  <input class="text" id="currency" maxlength="5" autocomplete="off">
+  <span class="field-label">Categories</span>
+  <p class="hint">Tap a category to rename it, change its colour or manage its subcategories.</p>
+  <div id="catList"></div>
+  <div class="add-cat">
+    <input class="text" id="newCat" maxlength="24" placeholder="New category" autocomplete="off">
+    <button class="ghost" id="addCat">Add</button>
+  </div>
+  <span class="field-label">Backup</span>
+  <div style="display:flex;flex-wrap:wrap;gap:8px">
+    <button class="ghost" id="exportBtn">Export CSV</button>
+    <button class="ghost" id="importBtn">Import CSV</button>
+    <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+  </div>
+  <p class="status" id="status"></p>
+  <div class="actions"><button class="primary" id="closeSettings">Done</button></div>
+</div>
+
+<!-- Category editor -->
+<div class="sheet" id="catSheet" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+  <div class="grab"></div>
+  <h2 id="catTitle">Edit category</h2>
+  <label class="field-label" for="catName">Name</label>
+  <input class="text" id="catName" maxlength="24" autocomplete="off">
+  <span class="field-label" id="colourLabel">Colour</span>
+  <div class="swatches" id="swatches" role="radiogroup" aria-labelledby="colourLabel"></div>
+  <span class="field-label">Subcategories</span>
+  <div id="subEditList"></div>
+  <div class="add-cat" style="margin-top:0">
+    <input class="text" id="newSub" maxlength="24" placeholder="New subcategory" autocomplete="off">
+    <button class="ghost" id="addSub">Add</button>
+  </div>
+  <div class="err" id="catErr" role="alert"></div>
+  <div class="actions">
+    <button class="ghost danger" id="delCat">Delete</button>
+    <button class="ghost" id="cancelCat">Cancel</button>
+    <button class="primary" id="saveCat">Save category</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="toastAct" hidden>Undo</button></div>
+
+<script>
+(function(){
+  "use strict";
+  var LS_KEY = "duit:v1";
+  var PALETTE = ["#1F6B57","#E3A63B","#3B6FB0","#B04336","#7A5AA6","#2E9BA8","#C4753A","#6E7F78","#8A9A3B","#C25B8A"];
+  var PAYS = ["Cash","Card","E-wallet","Transfer"];
+  var DEFAULT_SUBS = {
+    Food:["Breakfast","Lunch","Dinner","Drinks","Snacks"],
+    Transport:["Fuel","Toll","Parking","E-hailing","Public transport"],
+    Groceries:[], Bills:["Electricity","Water","Internet","Phone"],
+    Shopping:["Clothing","Household","Gadgets"], Health:["Clinic","Pharmacy"],
+    Fun:["Movies","Games","Outings"], Other:[]
+  };
+  var DEFAULT_CATS = ["Food","Transport","Groceries","Bills","Shopping","Health","Fun","Other"]
+    .map(function(n,i){ return {n:n, c:PALETTE[i], subs:DEFAULT_SUBS[n].slice()}; });
+  function normalizeSettings(){
+    (state.settings.cats||[]).forEach(function(c){
+      if(!Array.isArray(c.subs)) c.subs = DEFAULT_SUBS[c.n] ? DEFAULT_SUBS[c.n].slice() : [];
+    });
+  }
+
+  var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food" } };
+  var view = { month: ymOf(todayStr()), filter:null, subFilter:null, editing:null, cat:null, sub:null, pay:null };
+  var draft = null;
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function ymOf(date){ return date.slice(0,7); }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function money(cents){
+    return (cents/100).toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function findCat(name){ return state.settings.cats.find(function(x){ return x.n===name; }); }
+  function catColor(name){
+    var c = state.settings.cats.find(function(x){ return x.n===name; });
+    return c ? c.c : "#8A968F";
+  }
+  function monthName(ym){
+    var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1, 1);
+    return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  }
+  function shiftMonth(ym,delta){
+    var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1+delta, 1);
+    return d.getFullYear()+"-"+pad(d.getMonth()+1);
+  }
+  function dayLabel(date){
+    var p=date.split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]);
+    if(date===todayStr()) return "Today";
+    var y=new Date(); y.setDate(y.getDate()-1);
+    if(date===(y.getFullYear()+"-"+pad(y.getMonth()+1)+"-"+pad(y.getDate()))) return "Yesterday";
+    return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  }
+  function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+
+  // ---------- storage: cloud (Claude account) with on-device fallback ----------
+  var db=null, userId=null, cloud=false, decided=false;
+  var touchedBeforeCloud = {};
+  var queues = {};
+
+  function loadLocal(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(d && d.months){
+        state.months = d.months;
+        state.settings = Object.assign({}, state.settings, d.settings||{});
+        normalizeSettings();
+      }
+    }catch(e){}
+  }
+  function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+  function hasLocalData(){ return Object.keys(state.months).some(function(k){ return (state.months[k]||[]).length; }); }
+
+  function writeDoc(path, body){
+    var run = function(){ return db.doc(path).set(body); };
+    var p = (queues[path]||Promise.resolve()).then(run, run);
+    queues[path] = p.catch(function(){});
+    p.catch(dbError);
+  }
+  function dbError(e){
+    var code = e && e.code;
+    if(code==="quota_exceeded"){ toast("Account storage is full. Export a CSV backup, then delete old months."); return; }
+    if(code==="unavailable" || code==="resource_exhausted"){ toast("Couldn't sync just now. It's saved on this device."); return; }
+    cloud=false; updateStatus();
+    toast("Couldn't save to your account. Saving on this device instead.");
+  }
+  function persistMonth(key){
+    saveLocal();
+    if(cloud) writeDoc("data/users/"+userId+"/m-"+key, {items: state.months[key]||[]});
+    else if(!decided) touchedBeforeCloud[key]=true;
+  }
+  function persistSettings(){
+    saveLocal();
+    if(cloud) writeDoc("data/users/"+userId+"/settings", clone(state.settings));
+  }
+  function pushAll(){
+    Object.keys(state.months).forEach(function(k){ persistMonth(k); });
+    persistSettings();
+  }
+
+  function initCloud(){
+    if(!window.claude || typeof window.claude.use!=="function") return;
+    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function(r){
+      var d=r[0], u=r[1];
+      if(!d || !u) return;
+      return u.id().then(function(id){
+        if(!id) return;
+        db=d; userId=id;
+        db.collection("data/users/"+userId).onSnapshot(function(snap){
+          var months={}, settings=null;
+          snap.docs.forEach(function(doc){
+            var data = doc.data()||{};
+            if(doc.id==="settings") settings=data;
+            else if(doc.id.indexOf("m-")===0) months[doc.id.slice(2)] = Array.isArray(data.items) ? clone(data.items) : [];
+          });
+          if(!decided){
+            if(snap.metadata.fromCache) return;
+            decided=true; cloud=true;
+            if(snap.empty){
+              if(hasLocalData()) pushAll(); else persistSettings();
+              updateStatus(); return;
+            }
+            // keep anything added on this device before sync connected
+            Object.keys(touchedBeforeCloud).forEach(function(k){
+              var cloudItems = months[k]||[];
+              var ids = {}; cloudItems.forEach(function(x){ ids[x.id]=1; });
+              (state.months[k]||[]).forEach(function(x){ if(!ids[x.id]) cloudItems.push(x); });
+              months[k]=cloudItems;
+            });
+            state.months = months;
+            if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
+            Object.keys(touchedBeforeCloud).forEach(function(k){ persistMonth(k); });
+            touchedBeforeCloud = {};
+            saveLocal(); updateStatus(); render(); return;
+          }
+          state.months = months;
+          if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
+          saveLocal(); render();
+        }, function(){ cloud=false; updateStatus(); });
+      });
+    }).catch(function(){});
+  }
+
+  // ---------- rendering ----------
+  function monthItems(ym){ return (state.months[ym]||[]).slice(); }
+
+  function render(){
+    var items = monthItems(view.month);
+    var cur = state.settings.currency || "";
+    $("monthLabel").textContent = monthName(view.month);
+    $("nextMonth").disabled = view.month >= ymOf(todayStr());
+    $("nextMonth").style.visibility = $("nextMonth").disabled ? "hidden" : "visible";
+
+    var byCat = {}, total = 0;
+    items.forEach(function(x){ byCat[x.cat]=(byCat[x.cat]||0)+x.amt; total+=x.amt; });
+    var inCat = view.filter ? items.filter(function(x){ return x.cat===view.filter; }) : items;
+    var bySub = {};
+    inCat.forEach(function(x){ var k=x.sub||"Unspecified"; bySub[k]=(bySub[k]||0)+x.amt; });
+    if(view.subFilter && !bySub[view.subFilter]) view.subFilter=null;
+    var shown = view.subFilter ? inCat.filter(function(x){ return (x.sub||"Unspecified")===view.subFilter; }) : inCat;
+    var shownTotal = shown.reduce(function(a,x){ return a+x.amt; },0);
+    var label = view.filter ? view.filter + (view.subFilter ? " › "+view.subFilter : "") : "";
+
+    var t = $("total"); t.textContent="";
+    t.appendChild(el("span","cur",cur)); t.appendChild(document.createTextNode(money(shownTotal)));
+    $("sub").textContent = view.filter
+      ? label + " · " + shown.length + (shown.length===1?" expense":" expenses") + " of " + cur + " " + money(total) + " total"
+      : items.length + (items.length===1?" expense":" expenses") + " this month";
+
+    // strip + legend
+    var cats = Object.keys(byCat).sort(function(a,b){ return byCat[b]-byCat[a]; });
+    var strip = $("strip"); strip.textContent="";
+    strip.style.display = total ? "flex" : "none";
+    cats.forEach(function(c){
+      var s=el("span"); s.style.flex = String(byCat[c]); s.style.background=catColor(c);
+      if(view.filter && view.filter!==c) s.style.opacity=".3";
+      strip.appendChild(s);
+    });
+    var lg = $("legend"); lg.textContent="";
+    lg.classList.toggle("filtering", !!view.filter);
+    cats.forEach(function(c){
+      var b=el("button","chip"); b.type="button";
+      b.setAttribute("aria-pressed", String(view.filter===c));
+      var dot=el("span","dot"); dot.style.background=catColor(c);
+      b.appendChild(dot); b.appendChild(el("span",null,c)); b.appendChild(el("span","amt num",money(byCat[c])));
+      b.onclick=function(){ view.filter = view.filter===c ? null : c; view.subFilter=null; render(); };
+      lg.appendChild(b);
+    });
+    var sl = $("subLegend"); sl.textContent="";
+    var subKeys = Object.keys(bySub).sort(function(a,b){ return bySub[b]-bySub[a]; });
+    var showSubs = !!view.filter && (subKeys.length>1 || (subKeys.length===1 && subKeys[0]!=="Unspecified"));
+    sl.hidden = !showSubs;
+    sl.classList.toggle("filtering", !!view.subFilter);
+    if(showSubs){
+      sl.style.borderLeftColor = catColor(view.filter);
+      subKeys.forEach(function(k){
+        var b=el("button","chip"); b.type="button";
+        b.setAttribute("aria-pressed", String(view.subFilter===k));
+        b.appendChild(el("span",null,k)); b.appendChild(el("span","amt num",money(bySub[k])));
+        b.onclick=function(){ view.subFilter = view.subFilter===k ? null : k; render(); };
+        sl.appendChild(b);
+      });
+    }
+
+    // list
+    var list=$("list"); list.textContent="";
+    if(!shown.length){
+      var e=el("div","empty");
+      e.appendChild(el("strong",null, items.length ? "Nothing in "+label : "No expenses yet"));
+      e.appendChild(el("span",null, items.length ? "Tap the category again to show everything." : "Tap Add expense to log your first one."));
+      list.appendChild(e); return;
+    }
+    shown.sort(function(a,b){ return a.date===b.date ? b.ts-a.ts : (a.date<b.date?1:-1); });
+    var groups=[], g=null;
+    shown.forEach(function(x){ if(!g||g.date!==x.date){ g={date:x.date,items:[],sum:0}; groups.push(g);} g.items.push(x); g.sum+=x.amt; });
+    groups.forEach(function(g){
+      var d=el("div","day");
+      var h=el("div","day-head"); h.appendChild(el("span",null,dayLabel(g.date))); h.appendChild(el("span","num",cur+" "+money(g.sum)));
+      d.appendChild(h);
+      g.items.forEach(function(x){
+        var r=el("button","row"); r.type="button";
+        r.setAttribute("aria-label", "Edit "+x.cat+(x.sub?" "+x.sub:"")+" "+cur+" "+money(x.amt));
+        var bar=el("span","bar"); bar.style.background=catColor(x.cat);
+        var w=el("span","what"); var cn=el("div","cat",x.cat);
+        if(x.sub){ cn.appendChild(el("span","subname"," › "+x.sub)); }
+        w.appendChild(cn);
+        var meta=[x.note,x.pay].filter(Boolean).join(" · ");
+        if(meta) w.appendChild(el("div","note",meta));
+        r.appendChild(bar); r.appendChild(w); r.appendChild(el("span","val num",money(x.amt)));
+        r.onclick=function(){ openExpense(x); };
+        d.appendChild(r);
+      });
+      list.appendChild(d);
+    });
+  }
+
+  // ---------- sheets ----------
+  var openSheetEl=null, lastFocus=null, onSheetClose=null;
+  function openSheet(s, onClose){
+    lastFocus=document.activeElement;
+    onSheetClose = onClose || null;
+    openSheetEl=s; s.classList.add("show"); $("scrim").classList.add("show");
+  }
+  function closeSheet(){
+    if(!openSheetEl) return;
+    openSheetEl.classList.remove("show"); $("scrim").classList.remove("show"); openSheetEl=null;
+    var cb=onSheetClose; onSheetClose=null;
+    if(cb) cb(); else if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  $("scrim").onclick=closeSheet;
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeSheet(); });
+
+  function renderCatPick(){
+    var box=$("catPick"); box.textContent="";
+    state.settings.cats.forEach(function(c){
+      var b=el("button","chip"); b.type="button"; b.setAttribute("role","radio");
+      b.setAttribute("aria-checked", String(view.cat===c.n));
+      var dot=el("span","dot"); dot.style.background=c.c; b.appendChild(dot); b.appendChild(el("span",null,c.n));
+      b.onclick=function(){ if(view.cat!==c.n){ view.cat=c.n; view.sub=null; } renderCatPick(); };
+      box.appendChild(b);
+    });
+    renderSubPick();
+  }
+  function renderSubPick(){
+    var c = findCat(view.cat); var subs = c ? c.subs.slice() : [];
+    if(view.sub && subs.indexOf(view.sub)<0) subs.push(view.sub);
+    $("subWrap").hidden = !subs.length;
+    var box=$("subPick"); box.textContent="";
+    subs.forEach(function(sn){
+      var b=el("button","chip",sn); b.type="button"; b.setAttribute("role","radio");
+      b.setAttribute("aria-checked", String(view.sub===sn));
+      b.onclick=function(){ view.sub = view.sub===sn ? null : sn; renderSubPick(); };
+      box.appendChild(b);
+    });
+  }
+  function renderPayPick(){
+    var box=$("payPick"); box.textContent="";
+    PAYS.forEach(function(p){
+      var b=el("button",null,p); b.type="button"; b.setAttribute("role","radio");
+      b.setAttribute("aria-checked", String(view.pay===p));
+      b.onclick=function(){ view.pay = view.pay===p ? null : p; renderPayPick(); };
+      box.appendChild(b);
+    });
+  }
+
+  function openExpense(x){
+    view.editing = x || null;
+    var cats = state.settings.cats.map(function(c){ return c.n; });
+    view.cat = x ? x.cat : (cats.indexOf(state.settings.lastCat)>-1 ? state.settings.lastCat : cats[0]);
+    view.pay = x ? (x.pay||null) : null;
+    view.sub = x ? (x.sub||null) : null;
+    $("expTitle").textContent = x ? "Edit expense" : "Add expense";
+    $("saveBtn").textContent = x ? "Save changes" : "Save expense";
+    $("delBtn").hidden = !x;
+    $("tillCur").textContent = state.settings.currency||"";
+    $("amount").value = x ? (x.amt/100).toFixed(2) : "";
+    $("note").value = x ? (x.note||"") : "";
+    var defDate = view.month===ymOf(todayStr()) ? todayStr() : view.month+"-01";
+    $("date").value = x ? x.date : defDate;
+    $("date").max = todayStr();
+    $("expErr").textContent="";
+    renderCatPick(); renderPayPick();
+    openSheet($("expSheet"));
+    setTimeout(function(){ $("amount").focus(); }, 60);
+  }
+
+  function parseAmount(s){
+    s = String(s).replace(/[^0-9.,]/g,"").replace(/,/g,".");
+    var parts=s.split("."); if(parts.length>2) s=parts.slice(0,-1).join("")+"."+parts[parts.length-1];
+    var n=parseFloat(s); if(!isFinite(n)) return 0;
+    return Math.round(n*100);
+  }
+
+  function saveExpense(){
+    var amt = parseAmount($("amount").value);
+    if(amt<=0){ $("expErr").textContent="Enter an amount above zero."; $("amount").focus(); return; }
+    if(!view.cat){ $("expErr").textContent="Pick a category."; return; }
+    var date = $("date").value || todayStr();
+    var note = $("note").value.trim();
+    var old = view.editing;
+    var item = { id: old?old.id:uid(), amt:amt, cat:view.cat, sub:view.sub||"", note:note, date:date, pay:view.pay||"", ts: old?old.ts:Date.now() };
+    var newKey = ymOf(date);
+    if(old){
+      var oldKey = ymOf(old.date);
+      state.months[oldKey] = (state.months[oldKey]||[]).filter(function(x){ return x.id!==old.id; });
+      if(oldKey!==newKey) persistMonth(oldKey);
+    }
+    (state.months[newKey] = state.months[newKey]||[]).push(item);
+    persistMonth(newKey);
+    if(state.settings.lastCat!==view.cat){ state.settings.lastCat=view.cat; persistSettings(); }
+    if(view.month!==newKey){ view.filter=null; view.subFilter=null; }
+    view.month = newKey;
+    closeSheet(); render();
+    toast(old ? "Changes saved" : "Expense saved");
+  }
+
+  function deleteExpense(){
+    var x=view.editing; if(!x) return;
+    var key=ymOf(x.date);
+    state.months[key]=(state.months[key]||[]).filter(function(i){ return i.id!==x.id; });
+    persistMonth(key); closeSheet(); render();
+    toast("Expense deleted", function(){
+      (state.months[key]=state.months[key]||[]).push(x); persistMonth(key); render();
+    });
+  }
+
+  $("addBtn").onclick=function(){ openExpense(null); };
+  $("saveBtn").onclick=saveExpense;
+  $("delBtn").onclick=deleteExpense;
+  $("amount").addEventListener("keydown",function(e){ if(e.key==="Enter") saveExpense(); });
+  $("note").addEventListener("keydown",function(e){ if(e.key==="Enter") saveExpense(); });
+  $("prevMonth").onclick=function(){ view.month=shiftMonth(view.month,-1); view.filter=null; render(); };
+  $("nextMonth").onclick=function(){ view.month=shiftMonth(view.month,1); view.filter=null; render(); };
+
+  // ---------- settings ----------
+  function renderSettings(){
+    $("currency").value = state.settings.currency||"";
+    var box=$("catList"); box.textContent="";
+    state.settings.cats.forEach(function(c,i){
+      var r=el("button","set-row cat-row"); r.type="button";
+      r.setAttribute("aria-label","Edit "+c.n);
+      var l=el("span","chip"); var dot=el("span","dot"); dot.style.background=c.c;
+      var txt=el("span"); txt.appendChild(document.createTextNode(c.n));
+      txt.appendChild(el("span","meta", c.subs.length ? c.subs.join(", ") : "No subcategories"));
+      l.appendChild(dot); l.appendChild(txt);
+      l.style.border="0"; l.style.background="transparent"; l.style.padding="0"; l.style.alignItems="flex-start"; dot.style.marginTop="6px";
+      var chev=el("span","chev"); chev.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
+      r.appendChild(l); r.appendChild(chev);
+      r.onclick=function(){ openCatEditor(i); };
+      box.appendChild(r);
+    });
+    updateStatus();
+  }
+  function updateStatus(){
+    var s=$("status"); s.textContent="";
+    if(cloud){
+      s.appendChild(el("b",null,"Synced to your Claude account. "));
+      s.appendChild(document.createTextNode("Open this page on any device where you're signed in and your expenses follow you. Only you can see them."));
+    } else {
+      s.appendChild(el("b",null,"Stored on this device only. "));
+      s.appendChild(document.createTextNode("Clearing browser data will erase it, so export a CSV now and then."));
+    }
+  }
+  $("openSettings").onclick=function(){ renderSettings(); openSheet($("setSheet")); };
+  $("closeSettings").onclick=closeSheet;
+  $("currency").addEventListener("change",function(){
+    state.settings.currency=$("currency").value.trim(); persistSettings(); render();
+  });
+  function addCategory(){
+    var n=$("newCat").value.trim(); if(!n) return;
+    if(state.settings.cats.some(function(c){ return c.n.toLowerCase()===n.toLowerCase(); })){ toast(n+" already exists"); return; }
+    var used = state.settings.cats.map(function(c){ return c.c; });
+    var color = PALETTE.find(function(p){ return used.indexOf(p)<0; }) || PALETTE[state.settings.cats.length%PALETTE.length];
+    state.settings.cats.push({n:n,c:color,subs:[]}); $("newCat").value="";
+    persistSettings(); renderSettings();
+  }
+  $("addCat").onclick=addCategory;
+  $("newCat").addEventListener("keydown",function(e){ if(e.key==="Enter") addCategory(); });
+
+  // ---------- category editor ----------
+  var delArmed=false, delTimer=null;
+  function backToSettings(){ renderSettings(); openSheet($("setSheet")); }
+  function openCatEditor(i){
+    var c = state.settings.cats[i];
+    draft = { i:i, n:c.n, c:c.c, subs:c.subs.map(function(s){ return {orig:s, name:s}; }) };
+    $("catName").value = c.n; $("newSub").value=""; $("catErr").textContent="";
+    disarmDelete();
+    $("delCat").disabled = state.settings.cats.length<=1;
+    renderSwatches(); renderSubEdit();
+    closeSheet();
+    openSheet($("catSheet"), backToSettings);
+  }
+  function renderSwatches(){
+    var box=$("swatches"); box.textContent="";
+    var colours = PALETTE.indexOf(draft.c)<0 ? PALETTE.concat([draft.c]) : PALETTE;
+    colours.forEach(function(col){
+      var b=el("button","swatch"); b.type="button"; b.setAttribute("role","radio");
+      b.setAttribute("aria-checked", String(draft.c===col)); b.setAttribute("aria-label","Colour "+col);
+      b.style.background=col;
+      b.onclick=function(){ draft.c=col; renderSwatches(); };
+      box.appendChild(b);
+    });
+  }
+  function renderSubEdit(){
+    var box=$("subEditList"); box.textContent="";
+    draft.subs.forEach(function(s,idx){
+      var r=el("div","sub-edit");
+      var inp=el("input","text"); inp.value=s.name; inp.maxLength=24; inp.setAttribute("aria-label","Subcategory name");
+      inp.oninput=function(){ s.name=inp.value; };
+      var x=el("button","x","×"); x.type="button"; x.setAttribute("aria-label","Remove "+(s.name||"subcategory"));
+      x.onclick=function(){ draft.subs.splice(idx,1); renderSubEdit(); };
+      r.appendChild(inp); r.appendChild(x); box.appendChild(r);
+    });
+  }
+  function addSub(){
+    var n=$("newSub").value.trim(); if(!n) return;
+    if(draft.subs.some(function(s){ return s.name.trim().toLowerCase()===n.toLowerCase(); })){ $("catErr").textContent=n+" is already in this category."; return; }
+    draft.subs.push({orig:null, name:n}); $("newSub").value=""; $("catErr").textContent="";
+    renderSubEdit(); $("newSub").focus();
+  }
+  function saveCategory(){
+    var name=$("catName").value.trim();
+    if(!name){ $("catErr").textContent="Give the category a name."; $("catName").focus(); return; }
+    var clash = state.settings.cats.some(function(c,i){ return i!==draft.i && c.n.toLowerCase()===name.toLowerCase(); });
+    if(clash){ $("catErr").textContent="There's already a category called "+name+"."; return; }
+    var seen={}, subs=[], subRename={};
+    for(var k=0;k<draft.subs.length;k++){
+      var s=draft.subs[k], sn=s.name.trim();
+      if(!sn) continue;
+      if(seen[sn.toLowerCase()]){ $("catErr").textContent=sn+" is listed twice."; return; }
+      seen[sn.toLowerCase()]=1; subs.push(sn);
+      if(s.orig && s.orig!==sn) subRename[s.orig]=sn;
+    }
+    var oldName = state.settings.cats[draft.i].n;
+    state.settings.cats[draft.i] = { n:name, c:draft.c, subs:subs };
+    // carry renames through to existing expenses
+    var renamed = name!==oldName, any = renamed || Object.keys(subRename).length;
+    var count=0;
+    if(any){
+      Object.keys(state.months).forEach(function(key){
+        var changed=false;
+        (state.months[key]||[]).forEach(function(x){
+          if(x.cat!==oldName) return;
+          var hit=false;
+          if(renamed){ x.cat=name; hit=true; }
+          if(x.sub && subRename[x.sub]){ x.sub=subRename[x.sub]; hit=true; }
+          if(hit){ changed=true; count++; }
+        });
+        if(changed) persistMonth(key);
+      });
+    }
+    if(state.settings.lastCat===oldName) state.settings.lastCat=name;
+    if(view.filter===oldName){ view.filter=name; if(view.subFilter && subRename[view.subFilter]) view.subFilter=subRename[view.subFilter]; }
+    persistSettings(); render();
+    closeSheet();
+    toast(count ? "Category saved · "+count+(count===1?" expense":" expenses")+" updated" : "Category saved");
+  }
+  function disarmDelete(){ delArmed=false; clearTimeout(delTimer); $("delCat").textContent="Delete"; }
+  function deleteCategory(){
+    if(state.settings.cats.length<=1) return;
+    if(!delArmed){
+      delArmed=true; $("delCat").textContent="Tap again to delete";
+      delTimer=setTimeout(disarmDelete, 3000); return;
+    }
+    disarmDelete();
+    var idx=draft.i, removed=state.settings.cats.splice(idx,1)[0];
+    if(view.filter===removed.n){ view.filter=null; view.subFilter=null; }
+    persistSettings(); render(); closeSheet();
+    toast(removed.n+" deleted. Past expenses keep their label.", function(){
+      state.settings.cats.splice(idx,0,removed); persistSettings(); render();
+      if(openSheetEl===$("setSheet")) renderSettings();
+    });
+  }
+  $("addSub").onclick=addSub;
+  $("newSub").addEventListener("keydown",function(e){ if(e.key==="Enter") addSub(); });
+  $("saveCat").onclick=saveCategory;
+  $("cancelCat").onclick=closeSheet;
+  $("delCat").onclick=deleteCategory;
+
+  function csvCell(v){ v=String(v==null?"":v); return /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+  function exportCsv(){
+    var all=[]; Object.keys(state.months).forEach(function(k){ all=all.concat(state.months[k]||[]); });
+    if(!all.length){ toast("No expenses to export yet"); return; }
+    all.sort(function(a,b){ return a.date===b.date ? a.ts-b.ts : (a.date<b.date?-1:1); });
+    var rows=[["Date","Category","Subcategory","Amount","Payment","Note"]].concat(all.map(function(x){ return [x.date,x.cat,x.sub||"",(x.amt/100).toFixed(2),x.pay||"",x.note||""]; }));
+    var csv=rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
+    var name="duit-expenses-"+todayStr()+".csv";
+    var fallback=function(){
+      var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download=name;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+    if(window.claude && typeof window.claude.use==="function"){
+      window.claude.use("downloads").then(function(dl){
+        if(!dl){ fallback(); return; }
+        dl.save({filename:name, data:csv}).then(function(){ toast("CSV exported"); }, function(e){
+          if(!e || e.code!=="declined") toast("Couldn't export the CSV. Try again.");
+        });
+      });
+    } else fallback();
+  }
+  $("exportBtn").onclick=exportCsv;
+
+  function parseCsv(text){
+    var rows=[], row=[], cell="", q=false;
+    text=text.replace(/^\uFEFF/,"");
+    for(var i=0;i<text.length;i++){
+      var ch=text[i];
+      if(q){
+        if(ch==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; }
+        else cell+=ch;
+      } else if(ch==='"') q=true;
+      else if(ch===','){ row.push(cell); cell=""; }
+      else if(ch==='\n' || ch==='\r'){
+        if(ch==='\r' && text[i+1]==='\n') i++;
+        row.push(cell); cell=""; if(row.some(function(c){ return c!==""; })) rows.push(row); row=[];
+      } else cell+=ch;
+    }
+    row.push(cell); if(row.some(function(c){ return c!==""; })) rows.push(row);
+    return rows;
+  }
+  function importCsv(text){
+    var rows=parseCsv(text);
+    if(rows.length<2){ toast("That file has no expenses in it."); return; }
+    var head=rows[0].map(function(h){ return h.trim().toLowerCase(); });
+    var col=function(n){ return head.indexOf(n); };
+    var iD=col("date"), iC=col("category"), iS=col("subcategory"), iA=col("amount"), iP=col("payment"), iN=col("note");
+    if(iD<0||iC<0||iA<0){ toast("Use a CSV exported from Duit (needs Date, Category and Amount columns)."); return; }
+    var existing={};
+    Object.keys(state.months).forEach(function(k){ (state.months[k]||[]).forEach(function(x){
+      existing[[x.date,x.cat,x.sub||"",x.amt,x.note||""].join("|")]=1; }); });
+    var added=0, skipped=0, touched={}, settingsChanged=false, base=Date.now();
+    rows.slice(1).forEach(function(r,idx){
+      var date=(r[iD]||"").trim(), cat=(r[iC]||"").trim(), amt=parseAmount(r[iA]||"");
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !cat || amt<=0){ skipped++; return; }
+      var sub=iS>-1?(r[iS]||"").trim():"", pay=iP>-1?(r[iP]||"").trim():"", note=iN>-1?(r[iN]||"").trim():"";
+      var key=[date,cat,sub,amt,note].join("|");
+      if(existing[key]){ skipped++; return; }
+      existing[key]=1;
+      var c=findCat(cat);
+      if(!c){
+        var used=state.settings.cats.map(function(x){ return x.c; });
+        c={n:cat, c:PALETTE.find(function(p){ return used.indexOf(p)<0; })||PALETTE[state.settings.cats.length%PALETTE.length], subs:[]};
+        state.settings.cats.push(c); settingsChanged=true;
+      }
+      if(sub && c.subs.indexOf(sub)<0){ c.subs.push(sub); settingsChanged=true; }
+      var m=ymOf(date);
+      (state.months[m]=state.months[m]||[]).push({id:uid(),amt:amt,cat:cat,sub:sub,note:note,date:date,pay:pay,ts:base+idx});
+      touched[m]=1; added++;
+    });
+    Object.keys(touched).forEach(persistMonth);
+    if(settingsChanged) persistSettings();
+    render(); renderSettings();
+    toast("Imported "+added+(added===1?" expense":" expenses")+(skipped?" · "+skipped+" skipped (duplicates or blank)":""));
+  }
+  $("importBtn").onclick=function(){ $("importFile").value=""; $("importFile").click(); };
+  $("importFile").onchange=function(){
+    var f=this.files&&this.files[0]; if(!f) return;
+    var rd=new FileReader();
+    rd.onload=function(){ importCsv(String(rd.result||"")); };
+    rd.onerror=function(){ toast("Couldn't read that file. Try exporting it again."); };
+    rd.readAsText(f);
+  };
+
+  // ---------- toast ----------
+  var toastTimer=null;
+  function toast(msg, undo){
+    $("toastMsg").textContent=msg;
+    var act=$("toastAct"); act.hidden=!undo;
+    act.onclick = undo ? function(){ undo(); $("toast").classList.remove("show"); } : null;
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){ $("toast").classList.remove("show"); }, undo?5000:2200);
+  }
+
+  // ---------- go ----------
+  loadLocal();
+  normalizeSettings();
+  render();
+  initCloud();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+}
+</script>
+</body>
+</html>
