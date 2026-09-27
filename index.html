@@ -15,6 +15,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#E9EFEC; --surface:#F8FAF9; --ink:#15231F; --muted:#5C6E68; --line:#CFDAD5;
@@ -248,6 +251,11 @@ button{cursor:pointer}
 <div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
   <div class="grab"></div>
   <h2 id="setTitle">Settings</h2>
+  <span class="field-label">Account</span>
+  <div class="set-row" id="acctRow">
+    <span id="acctLabel">Not signed in</span>
+    <button class="ghost" id="acctBtn">Sign in with Google</button>
+  </div>
   <label class="field-label" for="currency">Currency symbol</label>
   <input class="text" id="currency" maxlength="5" autocomplete="off">
   <span class="field-label">Categories</span>
@@ -368,8 +376,24 @@ button{cursor:pointer}
   }
   function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
 
-  // ---------- storage: cloud (Claude account) with on-device fallback ----------
+  // ---------- storage: cloud (Google account via Firebase) with on-device fallback ----------
+  // To turn on cross-device sync: create a free project at https://console.firebase.google.com,
+  // enable the Google sign-in provider and Firestore, add this site's domain under
+  // Authentication > Settings > Authorized domains, then paste your project's config below.
+  var FIREBASE_CONFIG = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  function firebaseConfigured(){
+    return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("YOUR_")!==0);
+  }
+
   var db=null, userId=null, cloud=false, decided=false;
+  var auth=null, currentUser=null, unsubSnapshot=null;
   var touchedBeforeCloud = {};
   var queues = {};
 
@@ -415,47 +439,93 @@ button{cursor:pointer}
     persistSettings();
   }
 
-  function initCloud(){
-    if(!window.claude || typeof window.claude.use!=="function") return;
-    Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function(r){
-      var d=r[0], u=r[1];
-      if(!d || !u) return;
-      return u.id().then(function(id){
-        if(!id) return;
-        db=d; userId=id;
-        db.collection("data/users/"+userId).onSnapshot(function(snap){
-          var months={}, settings=null;
-          snap.docs.forEach(function(doc){
-            var data = doc.data()||{};
-            if(doc.id==="settings") settings=data;
-            else if(doc.id.indexOf("m-")===0) months[doc.id.slice(2)] = Array.isArray(data.items) ? clone(data.items) : [];
-          });
-          if(!decided){
-            if(snap.metadata.fromCache) return;
-            decided=true; cloud=true;
-            if(snap.empty){
-              if(hasLocalData()) pushAll(); else persistSettings();
-              updateStatus(); return;
-            }
-            // keep anything added on this device before sync connected
-            Object.keys(touchedBeforeCloud).forEach(function(k){
-              var cloudItems = months[k]||[];
-              var ids = {}; cloudItems.forEach(function(x){ ids[x.id]=1; });
-              (state.months[k]||[]).forEach(function(x){ if(!ids[x.id]) cloudItems.push(x); });
-              months[k]=cloudItems;
-            });
-            state.months = months;
-            if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
-            Object.keys(touchedBeforeCloud).forEach(function(k){ persistMonth(k); });
-            touchedBeforeCloud = {};
-            saveLocal(); updateStatus(); render(); return;
-          }
-          state.months = months;
-          if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
-          saveLocal(); render();
-        }, function(){ cloud=false; updateStatus(); });
+  function subscribeCloud(){
+    decided=false; cloud=false;
+    if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot=null; }
+    unsubSnapshot = db.collection("data/users/"+userId).onSnapshot(function(snap){
+      var months={}, settings=null;
+      snap.docs.forEach(function(doc){
+        var data = doc.data()||{};
+        if(doc.id==="settings") settings=data;
+        else if(doc.id.indexOf("m-")===0) months[doc.id.slice(2)] = Array.isArray(data.items) ? clone(data.items) : [];
       });
-    }).catch(function(){});
+      if(!decided){
+        if(snap.metadata.fromCache) return;
+        decided=true; cloud=true;
+        if(snap.empty){
+          if(hasLocalData()) pushAll(); else persistSettings();
+          updateStatus(); return;
+        }
+        // keep anything added on this device before sync connected
+        Object.keys(touchedBeforeCloud).forEach(function(k){
+          var cloudItems = months[k]||[];
+          var ids = {}; cloudItems.forEach(function(x){ ids[x.id]=1; });
+          (state.months[k]||[]).forEach(function(x){ if(!ids[x.id]) cloudItems.push(x); });
+          months[k]=cloudItems;
+        });
+        state.months = months;
+        if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
+        Object.keys(touchedBeforeCloud).forEach(function(k){ persistMonth(k); });
+        touchedBeforeCloud = {};
+        saveLocal(); updateStatus(); render(); return;
+      }
+      state.months = months;
+      if(settings){ state.settings = Object.assign({}, state.settings, clone(settings)); normalizeSettings(); }
+      saveLocal(); render();
+    }, function(){ cloud=false; updateStatus(); });
+  }
+
+  function initCloud(){
+    if(!firebaseConfigured() || typeof firebase==="undefined"){ renderAuthUI(); return; }
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    auth.getRedirectResult().catch(function(){});
+    renderAuthUI();
+    auth.onAuthStateChanged(function(user){
+      if(user){
+        userId = user.uid; currentUser = user;
+        subscribeCloud();
+      } else {
+        if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot=null; }
+        currentUser=null; userId=null; cloud=false; decided=false;
+        updateStatus();
+      }
+      renderAuthUI();
+    });
+  }
+  function signInGoogle(){
+    if(!auth) return;
+    var provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(function(e){
+      var code = e && e.code;
+      if(code==="auth/popup-blocked" || code==="auth/cancelled-popup-request" || code==="auth/operation-not-supported-in-this-environment"){
+        auth.signInWithRedirect(provider);
+      } else if(code!=="auth/popup-closed-by-user"){
+        toast("Couldn't sign in. Try again.");
+      }
+    });
+  }
+  function signOutGoogle(){ if(auth) auth.signOut(); }
+  function renderAuthUI(){
+    var row=$("acctRow"); if(!row) return;
+    if(!firebaseConfigured() || typeof firebase==="undefined"){
+      $("acctLabel").textContent = "Cross-device sync not set up";
+      $("acctBtn").textContent = "Sign in with Google";
+      $("acctBtn").disabled = true;
+      $("acctBtn").onclick = null;
+      return;
+    }
+    $("acctBtn").disabled = false;
+    if(currentUser){
+      $("acctLabel").textContent = "Signed in as "+(currentUser.email||currentUser.displayName||"Google account");
+      $("acctBtn").textContent = "Sign out";
+      $("acctBtn").onclick = signOutGoogle;
+    } else {
+      $("acctLabel").textContent = "Not signed in";
+      $("acctBtn").textContent = "Sign in with Google";
+      $("acctBtn").onclick = signInGoogle;
+    }
   }
 
   // ---------- rendering ----------
@@ -689,16 +759,17 @@ button{cursor:pointer}
     var hasPin = isPinSet();
     $("pinToggle").checked = hasPin;
     $("pinChangeRow").hidden = !hasPin;
+    renderAuthUI();
     updateStatus();
   }
   function updateStatus(){
     var s=$("status"); s.textContent="";
     if(cloud){
-      s.appendChild(el("b",null,"Synced to your Claude account. "));
+      s.appendChild(el("b",null,"Synced to your Google account. "));
       s.appendChild(document.createTextNode("Open this page on any device where you're signed in and your expenses follow you. Only you can see them."));
     } else {
       s.appendChild(el("b",null,"Stored on this device only. "));
-      s.appendChild(document.createTextNode("Clearing browser data will erase it, so export a CSV now and then."));
+      s.appendChild(document.createTextNode("Sign in with Google above to sync across devices, or export a CSV backup now and then."));
     }
   }
   $("openSettings").onclick=function(){ renderSettings(); openSheet($("setSheet")); };
