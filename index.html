@@ -75,6 +75,16 @@ button{cursor:pointer}
 .chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .legend.filtering .chip[aria-pressed="false"]{opacity:.5}
 
+/* Budgets */
+.budgets{margin-top:22px}
+.budget-row{margin-bottom:14px}
+.budget-row:last-child{margin-bottom:0}
+.budget-head{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;margin-bottom:6px}
+.budget-head .amt{color:var(--muted)}
+.budget-head .amt.over{color:var(--danger);font-weight:700}
+.budget-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.budget-bar span{display:block;height:100%;border-radius:3px}
+
 /* List */
 .day{margin-top:26px}
 .day-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--muted);padding:0 2px 6px;border-bottom:1px solid var(--line)}
@@ -192,6 +202,8 @@ button{cursor:pointer}
     <div class="legend subs" id="subLegend" role="group" aria-label="Filter by subcategory" hidden></div>
   </section>
 
+  <section class="budgets" id="budgets" aria-label="Budgets" hidden></section>
+
   <section id="list" aria-label="Expenses"></section>
 </main>
 
@@ -290,6 +302,8 @@ button{cursor:pointer}
   <h2 id="catTitle">Edit category</h2>
   <label class="field-label" for="catName">Name</label>
   <input class="text" id="catName" maxlength="24" autocomplete="off">
+  <label class="field-label" for="catBudget">Monthly budget (optional)</label>
+  <input class="text" id="catBudget" inputmode="decimal" placeholder="0.00" autocomplete="off">
   <span class="field-label" id="colourLabel">Colour</span>
   <div class="swatches" id="swatches" role="radiogroup" aria-labelledby="colourLabel"></div>
   <span class="field-label">Subcategories</span>
@@ -333,10 +347,11 @@ button{cursor:pointer}
     Fun:["Movies","Games","Outings"], Other:[]
   };
   var DEFAULT_CATS = ["Food","Transport","Groceries","Bills","Shopping","Health","Fun","Other"]
-    .map(function(n,i){ return {n:n, c:PALETTE[i], subs:DEFAULT_SUBS[n].slice()}; });
+    .map(function(n,i){ return {n:n, c:PALETTE[i], subs:DEFAULT_SUBS[n].slice(), budget:0}; });
   function normalizeSettings(){
     (state.settings.cats||[]).forEach(function(c){
       if(!Array.isArray(c.subs)) c.subs = DEFAULT_SUBS[c.n] ? DEFAULT_SUBS[c.n].slice() : [];
+      if(typeof c.budget!=="number" || !isFinite(c.budget) || c.budget<0) c.budget = 0;
     });
   }
 
@@ -589,6 +604,8 @@ button{cursor:pointer}
       });
     }
 
+    renderBudgets(byCat, cur);
+
     // list
     var list=$("list"); list.textContent="";
     if(!shown.length){
@@ -618,6 +635,32 @@ button{cursor:pointer}
         d.appendChild(r);
       });
       list.appendChild(d);
+    });
+  }
+
+  function renderBudgets(byCat, cur){
+    var rows = state.settings.cats
+      .filter(function(c){ return c.budget>0; })
+      .map(function(c){ return { c:c, spent: byCat[c.n]||0 }; })
+      .sort(function(a,b){ return (b.spent/b.c.budget) - (a.spent/a.c.budget); });
+    var box=$("budgets"); box.textContent="";
+    box.hidden = !rows.length;
+    if(!rows.length) return;
+    box.appendChild(el("span","field-label","Budgets"));
+    rows.forEach(function(r){
+      var over = r.spent > r.c.budget;
+      var row=el("div","budget-row");
+      var head=el("div","budget-head");
+      head.appendChild(el("span",null,r.c.n));
+      head.appendChild(el("span","amt num"+(over?" over":""), cur+" "+money(r.spent)+" of "+cur+" "+money(r.c.budget)));
+      row.appendChild(head);
+      var bar=el("div","budget-bar");
+      var fill=el("span");
+      fill.style.width = Math.min(100, r.spent/r.c.budget*100) + "%";
+      fill.style.background = over ? "var(--danger)" : r.c.c;
+      bar.appendChild(fill);
+      row.appendChild(bar);
+      box.appendChild(row);
     });
   }
 
@@ -748,7 +791,9 @@ button{cursor:pointer}
       r.setAttribute("aria-label","Edit "+c.n);
       var l=el("span","chip"); var dot=el("span","dot"); dot.style.background=c.c;
       var txt=el("span"); txt.appendChild(document.createTextNode(c.n));
-      txt.appendChild(el("span","meta", c.subs.length ? c.subs.join(", ") : "No subcategories"));
+      var metaParts = [c.subs.length ? c.subs.join(", ") : "No subcategories"];
+      if(c.budget>0) metaParts.push("Budget "+(state.settings.currency||"")+" "+money(c.budget)+"/mo");
+      txt.appendChild(el("span","meta", metaParts.join(" · ")));
       l.appendChild(dot); l.appendChild(txt);
       l.style.border="0"; l.style.background="transparent"; l.style.padding="0"; l.style.alignItems="flex-start"; dot.style.marginTop="6px";
       var chev=el("span","chev"); chev.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>';
@@ -782,7 +827,7 @@ button{cursor:pointer}
     if(state.settings.cats.some(function(c){ return c.n.toLowerCase()===n.toLowerCase(); })){ toast(n+" already exists"); return; }
     var used = state.settings.cats.map(function(c){ return c.c; });
     var color = PALETTE.find(function(p){ return used.indexOf(p)<0; }) || PALETTE[state.settings.cats.length%PALETTE.length];
-    state.settings.cats.push({n:n,c:color,subs:[]}); $("newCat").value="";
+    state.settings.cats.push({n:n,c:color,subs:[],budget:0}); $("newCat").value="";
     persistSettings(); renderSettings();
   }
   $("addCat").onclick=addCategory;
@@ -793,8 +838,9 @@ button{cursor:pointer}
   function backToSettings(){ renderSettings(); openSheet($("setSheet")); }
   function openCatEditor(i){
     var c = state.settings.cats[i];
-    draft = { i:i, n:c.n, c:c.c, subs:c.subs.map(function(s){ return {orig:s, name:s}; }) };
+    draft = { i:i, n:c.n, c:c.c, subs:c.subs.map(function(s){ return {orig:s, name:s}; }), budget:c.budget||0 };
     $("catName").value = c.n; $("newSub").value=""; $("catErr").textContent="";
+    $("catBudget").value = draft.budget ? (draft.budget/100).toFixed(2) : "";
     disarmDelete();
     $("delCat").disabled = state.settings.cats.length<=1;
     renderSwatches(); renderSubEdit();
@@ -843,7 +889,8 @@ button{cursor:pointer}
       if(s.orig && s.orig!==sn) subRename[s.orig]=sn;
     }
     var oldName = state.settings.cats[draft.i].n;
-    state.settings.cats[draft.i] = { n:name, c:draft.c, subs:subs };
+    var budget = parseAmount($("catBudget").value || "");
+    state.settings.cats[draft.i] = { n:name, c:draft.c, subs:subs, budget:budget };
     // carry renames through to existing expenses
     var renamed = name!==oldName, any = renamed || Object.keys(subRename).length;
     var count=0;
@@ -950,7 +997,7 @@ button{cursor:pointer}
       var c=findCat(cat);
       if(!c){
         var used=state.settings.cats.map(function(x){ return x.c; });
-        c={n:cat, c:PALETTE.find(function(p){ return used.indexOf(p)<0; })||PALETTE[state.settings.cats.length%PALETTE.length], subs:[]};
+        c={n:cat, c:PALETTE.find(function(p){ return used.indexOf(p)<0; })||PALETTE[state.settings.cats.length%PALETTE.length], subs:[], budget:0};
         state.settings.cats.push(c); settingsChanged=true;
       }
       if(sub && c.subs.indexOf(sub)<0){ c.subs.push(sub); settingsChanged=true; }
