@@ -594,6 +594,7 @@ button{cursor:pointer}
     ref.get().then(function(doc){
       members = (doc.exists && Array.isArray(doc.data().list)) ? doc.data().list : [];
       renderShareUI();
+      render();
       if(spaceId===userId){
         var myEmail = (currentUser&&currentUser.email)||"";
         var mine = members.find(function(m){ return m.uid===userId; });
@@ -818,6 +819,9 @@ button{cursor:pointer}
         w.appendChild(cn);
         var meta=[x.note,x.pay].filter(Boolean).join(" · ");
         if(meta) w.appendChild(el("div","note",meta));
+        if(members.length>1 && x.by){
+          w.appendChild(el("div","note","Added by "+(x.by===userId ? "you" : (x.byName||"someone else"))));
+        }
         r.appendChild(bar); r.appendChild(w); r.appendChild(el("span","val num",money(x.amt)));
         r.onclick=function(){ openExpense(x); };
         d.appendChild(r);
@@ -936,7 +940,9 @@ button{cursor:pointer}
     var date = $("date").value || todayStr();
     var note = $("note").value.trim();
     var old = view.editing;
-    var item = { id: old?old.id:uid(), amt:amt, cat:view.cat, sub:view.sub||"", note:note, date:date, pay:view.pay||"", ts: old?old.ts:Date.now() };
+    var item = { id: old?old.id:uid(), amt:amt, cat:view.cat, sub:view.sub||"", note:note, date:date, pay:view.pay||"", ts: old?old.ts:Date.now(),
+      by: old ? (old.by||null) : (userId||null),
+      byName: old ? (old.byName||"") : ((currentUser && (currentUser.displayName||currentUser.email))||"") };
     var newKey = ymOf(date);
     if(old){
       var oldKey = ymOf(old.date);
