@@ -268,6 +268,17 @@ button{cursor:pointer}
     <span id="acctLabel">Not signed in</span>
     <button class="ghost" id="acctBtn">Sign in with Google</button>
   </div>
+  <span class="field-label">Shared expenses</span>
+  <p class="hint" id="shareHint">Sign in with Google above to invite someone to view, add and edit expenses together.</p>
+  <div id="membersList"></div>
+  <div class="set-row" id="inviteRow" hidden>
+    <span>Invite someone to share these expenses</span>
+    <button class="ghost" id="inviteBtn">Invite</button>
+  </div>
+  <div class="set-row" id="leaveRow" hidden>
+    <span>You're viewing shared expenses</span>
+    <button class="ghost danger" id="leaveShareBtn">Leave</button>
+  </div>
   <label class="field-label" for="currency">Currency symbol</label>
   <input class="text" id="currency" maxlength="5" autocomplete="off">
   <span class="field-label">Categories</span>
@@ -329,6 +340,27 @@ button{cursor:pointer}
   <div class="err" id="pinErr" role="alert"></div>
   <div class="keypad" id="pinKeypad"></div>
   <div class="actions"><button class="ghost" id="cancelPin">Cancel</button></div>
+</div>
+
+<!-- Invite link -->
+<div class="sheet" id="inviteSheet" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
+  <div class="grab"></div>
+  <h2 id="inviteTitle">Invite someone</h2>
+  <p class="hint">Anyone with this link can sign in with their own Google account and get full access to view, add and edit these expenses together. It works once.</p>
+  <input class="text" id="inviteLink" readonly>
+  <div class="actions"><button class="primary" id="copyInviteBtn">Copy link</button></div>
+</div>
+
+<!-- Accept invite -->
+<div class="sheet" id="joinSheet" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+  <div class="grab"></div>
+  <h2 id="joinTitle">Join shared expenses?</h2>
+  <p class="hint">You'll be able to view, add and edit expenses together, and so will they. Your own existing expenses stay separate and untouched.</p>
+  <div class="err" id="joinErr" role="alert"></div>
+  <div class="actions">
+    <button class="ghost" id="cancelJoin">Cancel</button>
+    <button class="primary" id="confirmJoin">Join</button>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="toastAct" hidden>Undo</button></div>
@@ -409,6 +441,7 @@ button{cursor:pointer}
 
   var db=null, userId=null, cloud=false, decided=false;
   var auth=null, currentUser=null, unsubSnapshot=null;
+  var spaceId=null, members=[], pendingJoinCode=null;
   var touchedBeforeCloud = {};
   var queues = {};
 
@@ -442,12 +475,12 @@ button{cursor:pointer}
   }
   function persistMonth(key){
     saveLocal();
-    if(cloud) writeDoc("data/users/"+userId+"/m-"+key, {items: state.months[key]||[]});
+    if(cloud) writeDoc("data/users/"+spaceId+"/m-"+key, {items: state.months[key]||[]});
     else if(!decided) touchedBeforeCloud[key]=true;
   }
   function persistSettings(){
     saveLocal();
-    if(cloud) writeDoc("data/users/"+userId+"/settings", clone(state.settings));
+    if(cloud) writeDoc("data/users/"+spaceId+"/settings", clone(state.settings));
   }
   function pushAll(){
     Object.keys(state.months).forEach(function(k){ persistMonth(k); });
@@ -457,7 +490,7 @@ button{cursor:pointer}
   function subscribeCloud(){
     decided=false; cloud=false;
     if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot=null; }
-    unsubSnapshot = db.collection("data/users/"+userId).onSnapshot(function(snap){
+    unsubSnapshot = db.collection("data/users/"+spaceId).onSnapshot(function(snap){
       var months={}, settings=null;
       snap.docs.forEach(function(doc){
         var data = doc.data()||{};
@@ -500,11 +533,11 @@ button{cursor:pointer}
     auth.onAuthStateChanged(function(user){
       if(user){
         userId = user.uid; currentUser = user;
-        subscribeCloud();
+        resolveSpace();
       } else {
         if(unsubSnapshot){ unsubSnapshot(); unsubSnapshot=null; }
-        currentUser=null; userId=null; cloud=false; decided=false;
-        updateStatus();
+        currentUser=null; userId=null; spaceId=null; members=[]; cloud=false; decided=false;
+        updateStatus(); renderShareUI();
       }
       renderAuthUI();
     });
@@ -542,6 +575,161 @@ button{cursor:pointer}
       $("acctBtn").onclick = signInGoogle;
     }
   }
+
+  // ---------- sharing ----------
+  function resolveSpace(){
+    db.doc("memberships/"+userId).get().then(function(doc){
+      spaceId = (doc.exists && doc.data().spaceId) ? doc.data().spaceId : userId;
+      subscribeCloud();
+      refreshMembers();
+      maybeContinuePendingJoin();
+    }).catch(function(){
+      spaceId = userId;
+      subscribeCloud();
+    });
+  }
+  function refreshMembers(){
+    if(!spaceId) return;
+    var ref = db.doc("data/users/"+spaceId+"/members");
+    ref.get().then(function(doc){
+      members = (doc.exists && Array.isArray(doc.data().list)) ? doc.data().list : [];
+      renderShareUI();
+      if(spaceId===userId){
+        var myEmail = (currentUser&&currentUser.email)||"";
+        var mine = members.find(function(m){ return m.uid===userId; });
+        if(!mine || mine.email!==myEmail){
+          var updated = members.filter(function(m){ return m.uid!==userId; });
+          updated.unshift({uid:userId, email:myEmail});
+          ref.set({list:updated}).then(function(){ members=updated; renderShareUI(); }).catch(function(){});
+        }
+      }
+    }).catch(function(){});
+  }
+  function randomInviteCode(){
+    var arr = new Uint8Array(8);
+    crypto.getRandomValues(arr);
+    return bufToHex(arr.buffer);
+  }
+  function createInvite(){
+    var code = randomInviteCode();
+    return db.doc("invites/"+code).set({spaceId:spaceId, used:false, createdAt:Date.now()}).then(function(){ return code; });
+  }
+  function openInvite(){
+    if(!spaceId) return;
+    $("inviteLink").value = "";
+    closeSheet();
+    openSheet($("inviteSheet"), function(){ renderSettings(); openSheet($("setSheet")); });
+    createInvite().then(function(code){
+      $("inviteLink").value = location.origin+location.pathname+"?join="+code;
+    }).catch(function(){
+      toast("Couldn't create an invite link. Try again.");
+    });
+  }
+  function copyInviteLink(){
+    var val = $("inviteLink").value; if(!val) return;
+    function fallbackCopy(){
+      $("inviteLink").select();
+      try{ document.execCommand("copy"); toast("Link copied"); }
+      catch(e){ toast("Couldn't copy — select and copy it manually."); }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(val).then(function(){ toast("Link copied"); }, fallbackCopy);
+    } else fallbackCopy();
+  }
+  function checkPendingJoinFromUrl(){
+    var params = new URLSearchParams(location.search);
+    var code = params.get("join");
+    if(code){ pendingJoinCode = code; history.replaceState(null, "", location.pathname); }
+  }
+  function maybeContinuePendingJoin(){
+    if(!pendingJoinCode || !userId) return;
+    $("joinErr").textContent = "";
+    openSheet($("joinSheet"));
+  }
+  function addSelfToMembers(sid){
+    var ref = db.doc("data/users/"+sid+"/members");
+    return ref.get().then(function(doc){
+      var list = (doc.exists && Array.isArray(doc.data().list)) ? doc.data().list.slice() : [];
+      list = list.filter(function(m){ return m.uid!==userId; });
+      list.push({uid:userId, email:(currentUser&&currentUser.email)||""});
+      return ref.set({list:list});
+    });
+  }
+  function removeSelfFromMembers(sid){
+    var ref = db.doc("data/users/"+sid+"/members");
+    return ref.get().then(function(doc){
+      if(!doc.exists) return;
+      var list = (doc.data().list||[]).filter(function(m){ return m.uid!==userId; });
+      return ref.set({list:list});
+    }).catch(function(){});
+  }
+  function performJoin(code){
+    var inviteRef = db.doc("invites/"+code);
+    inviteRef.get().then(function(doc){
+      if(!doc.exists){ $("joinErr").textContent = "This invite link is no longer valid."; return; }
+      var data = doc.data();
+      if(data.used){ $("joinErr").textContent = "This invite link has already been used."; return; }
+      if(data.spaceId===userId){ $("joinErr").textContent = "That's your own invite link."; return; }
+      var newSpaceId = data.spaceId;
+      inviteRef.update({used:true, claimedBy:userId}).then(function(){
+        return db.doc("memberships/"+userId).set({spaceId:newSpaceId});
+      }).then(function(){
+        return addSelfToMembers(newSpaceId);
+      }).then(function(){
+        pendingJoinCode = null;
+        spaceId = newSpaceId;
+        closeSheet();
+        subscribeCloud();
+        refreshMembers();
+        toast("Joined shared expenses");
+      }).catch(function(){
+        $("joinErr").textContent = "Couldn't join. Try again.";
+      });
+    }).catch(function(){
+      $("joinErr").textContent = "Couldn't check that invite. Try again.";
+    });
+  }
+  function leaveShared(){
+    if(!spaceId || spaceId===userId) return;
+    var oldSpace = spaceId;
+    removeSelfFromMembers(oldSpace).then(function(){
+      return db.doc("memberships/"+userId).set({spaceId:userId});
+    }).then(function(){
+      spaceId = userId;
+      subscribeCloud();
+      refreshMembers();
+      render();
+      toast("Left shared expenses");
+    }).catch(function(){
+      toast("Couldn't leave right now. Try again.");
+    });
+  }
+  function renderShareUI(){
+    var hint=$("shareHint"); if(!hint) return;
+    var list=$("membersList"), inviteRow=$("inviteRow"), leaveRow=$("leaveRow");
+    if(!userId){
+      hint.hidden=false; list.textContent=""; inviteRow.hidden=true; leaveRow.hidden=true;
+      return;
+    }
+    hint.hidden=true;
+    list.textContent="";
+    var everyone = members.slice();
+    if(!everyone.some(function(m){ return m.uid===spaceId; })){
+      everyone.unshift({uid:spaceId, email: spaceId===userId ? ((currentUser&&currentUser.email)||"") : ""});
+    }
+    everyone.forEach(function(m){
+      var row=el("div","set-row");
+      row.appendChild(el("span",null, m.uid===userId ? "You" : (m.email||"Member")));
+      list.appendChild(row);
+    });
+    inviteRow.hidden = false;
+    leaveRow.hidden = (spaceId===userId);
+  }
+  $("inviteBtn").onclick = openInvite;
+  $("copyInviteBtn").onclick = copyInviteLink;
+  $("leaveShareBtn").onclick = leaveShared;
+  $("confirmJoin").onclick = function(){ if(pendingJoinCode) performJoin(pendingJoinCode); };
+  $("cancelJoin").onclick = function(){ pendingJoinCode=null; closeSheet(); };
 
   // ---------- rendering ----------
   function monthItems(ym){ return (state.months[ym]||[]).slice(); }
@@ -805,6 +993,7 @@ button{cursor:pointer}
     $("pinToggle").checked = hasPin;
     $("pinChangeRow").hidden = !hasPin;
     renderAuthUI();
+    renderShareUI();
     updateStatus();
   }
   function updateStatus(){
@@ -1225,6 +1414,7 @@ button{cursor:pointer}
   // ---------- go ----------
   loadLocal();
   normalizeSettings();
+  checkPendingJoinFromUrl();
   render();
   if(isPinSet()) showLock();
   initCloud();
