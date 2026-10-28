@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Noto+Sans+Myanmar:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -22,8 +22,8 @@
 :root{
   --bg:#E9EFEC; --surface:#F8FAF9; --ink:#15231F; --muted:#5C6E68; --line:#CFDAD5;
   --accent:#1F6B57; --accent-ink:#FFFFFF; --hi:#E3A63B; --danger:#B04336; --scrim:rgba(12,22,19,.42);
-  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --display:"Bricolage Grotesque", "Noto Sans Myanmar", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Noto Sans Myanmar", "Segoe UI", system-ui, -apple-system, sans-serif;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -189,7 +189,7 @@ button{cursor:pointer}
     </button>
   </header>
 
-  <section aria-label="Month summary">
+  <section id="monthSection" aria-label="Month summary">
     <div class="month">
       <button class="icon-btn" id="prevMonth" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></button>
       <div class="month-label" id="monthLabel" aria-live="polite"></div>
@@ -210,7 +210,7 @@ button{cursor:pointer}
 <div class="dock">
   <button class="primary" id="addBtn">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    Add expense
+    <span id="addBtnLabel">Add expense</span>
   </button>
 </div>
 
@@ -240,11 +240,11 @@ button{cursor:pointer}
     <span class="field-label" id="subLabel">Subcategory (optional)</span>
     <div class="cats subpick" id="subPick" role="radiogroup" aria-labelledby="subLabel"></div>
   </div>
-  <label class="field-label" for="note">Note (optional)</label>
+  <label class="field-label" for="note" id="noteLabel">Note (optional)</label>
   <input class="text" id="note" maxlength="120" placeholder="e.g. nasi lemak with team" autocomplete="off">
   <div class="two">
     <div>
-      <label class="field-label" for="date">Date</label>
+      <label class="field-label" for="date" id="dateLabel">Date</label>
       <input class="text" id="date" type="date">
     </div>
     <div>
@@ -263,44 +263,49 @@ button{cursor:pointer}
 <div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
   <div class="grab"></div>
   <h2 id="setTitle">Settings</h2>
-  <span class="field-label">Account</span>
+  <label class="field-label" for="langSelect" id="languageLabel">Language</label>
+  <select class="text" id="langSelect">
+    <option value="en">English</option>
+    <option value="my">မြန်မာ</option>
+  </select>
+  <span class="field-label" id="acctSectionLabel">Account</span>
   <div class="set-row" id="acctRow">
     <span id="acctLabel">Not signed in</span>
     <button class="ghost" id="acctBtn">Sign in with Google</button>
   </div>
-  <span class="field-label">Shared expenses</span>
+  <span class="field-label" id="shareSectionLabel">Shared expenses</span>
   <p class="hint" id="shareHint">Sign in with Google above to invite someone to view, add and edit expenses together.</p>
   <div id="membersList"></div>
   <div class="set-row" id="inviteRow" hidden>
-    <span>Invite someone to share these expenses</span>
+    <span id="inviteRowLabel">Invite someone to share these expenses</span>
     <button class="ghost" id="inviteBtn">Invite</button>
   </div>
   <div class="set-row" id="leaveRow" hidden>
-    <span>You're viewing shared expenses</span>
+    <span id="leaveRowLabel">You're viewing shared expenses</span>
     <button class="ghost danger" id="leaveShareBtn">Leave</button>
   </div>
-  <label class="field-label" for="currency">Currency symbol</label>
+  <label class="field-label" for="currency" id="currencyLabel">Currency symbol</label>
   <input class="text" id="currency" maxlength="5" autocomplete="off">
-  <label class="field-label" for="cycleDay">Expense cycle starts on day</label>
+  <label class="field-label" for="cycleDay" id="cycleDayLabel">Expense cycle starts on day</label>
   <input class="text" id="cycleDay" type="number" min="1" max="28" inputmode="numeric" autocomplete="off">
-  <p class="hint">E.g. 24 means each month runs from the 24th to the 23rd of the next. Use 1 for a normal calendar month.</p>
-  <span class="field-label">Categories</span>
-  <p class="hint">Tap a category to rename it, change its colour or manage its subcategories.</p>
+  <p class="hint" id="cycleDayHint">E.g. 24 means each month runs from the 24th to the 23rd of the next. Use 1 for a normal calendar month.</p>
+  <span class="field-label" id="catSectionLabel">Categories</span>
+  <p class="hint" id="catHint">Tap a category to rename it, change its colour or manage its subcategories.</p>
   <div id="catList"></div>
   <div class="add-cat">
     <input class="text" id="newCat" maxlength="24" placeholder="New category" autocomplete="off">
     <button class="ghost" id="addCat">Add</button>
   </div>
-  <span class="field-label">Security</span>
+  <span class="field-label" id="securitySectionLabel">Security</span>
   <div class="set-row">
-    <span>Require PIN to open</span>
+    <span id="pinToggleLabel">Require PIN to open</span>
     <input type="checkbox" id="pinToggle" role="switch" aria-checked="false">
   </div>
   <div class="set-row" id="pinChangeRow" hidden>
-    <span>Change PIN</span>
+    <span id="changePinLabel">Change PIN</span>
     <button class="ghost" id="changePinBtn">Change</button>
   </div>
-  <span class="field-label">Backup</span>
+  <span class="field-label" id="backupSectionLabel">Backup</span>
   <div style="display:flex;flex-wrap:wrap;gap:8px">
     <button class="ghost" id="exportBtn">Export CSV</button>
     <button class="ghost" id="importBtn">Import CSV</button>
@@ -314,13 +319,13 @@ button{cursor:pointer}
 <div class="sheet" id="catSheet" role="dialog" aria-modal="true" aria-labelledby="catTitle">
   <div class="grab"></div>
   <h2 id="catTitle">Edit category</h2>
-  <label class="field-label" for="catName">Name</label>
+  <label class="field-label" for="catName" id="catNameLabel">Name</label>
   <input class="text" id="catName" maxlength="24" autocomplete="off">
-  <label class="field-label" for="catBudget">Monthly budget (optional)</label>
+  <label class="field-label" for="catBudget" id="catBudgetLabel">Monthly budget (optional)</label>
   <input class="text" id="catBudget" inputmode="decimal" placeholder="0.00" autocomplete="off">
   <span class="field-label" id="colourLabel">Colour</span>
   <div class="swatches" id="swatches" role="radiogroup" aria-labelledby="colourLabel"></div>
-  <span class="field-label">Subcategories</span>
+  <span class="field-label" id="subsSectionLabel">Subcategories</span>
   <div id="subEditList"></div>
   <div class="add-cat" style="margin-top:0">
     <input class="text" id="newSub" maxlength="24" placeholder="New subcategory" autocomplete="off">
@@ -349,7 +354,7 @@ button{cursor:pointer}
 <div class="sheet" id="inviteSheet" role="dialog" aria-modal="true" aria-labelledby="inviteTitle">
   <div class="grab"></div>
   <h2 id="inviteTitle">Invite someone</h2>
-  <p class="hint">Anyone with this link can sign in with their own Google account and get full access to view, add and edit these expenses together. It works once.</p>
+  <p class="hint" id="inviteHint">Anyone with this link can sign in with their own Google account and get full access to view, add and edit these expenses together. It works once.</p>
   <input class="text" id="inviteLink" readonly>
   <div class="actions"><button class="primary" id="copyInviteBtn">Copy link</button></div>
 </div>
@@ -358,7 +363,7 @@ button{cursor:pointer}
 <div class="sheet" id="joinSheet" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
   <div class="grab"></div>
   <h2 id="joinTitle">Join shared expenses?</h2>
-  <p class="hint">You'll be able to view, add and edit expenses together, and so will they. Your own existing expenses stay separate and untouched.</p>
+  <p class="hint" id="joinHint">You'll be able to view, add and edit expenses together, and so will they. Your own existing expenses stay separate and untouched.</p>
   <div class="err" id="joinErr" role="alert"></div>
   <div class="actions">
     <button class="ghost" id="cancelJoin">Cancel</button>
@@ -383,6 +388,166 @@ button{cursor:pointer}
   };
   var DEFAULT_CATS = ["Food","Transport","Groceries","Bills","Shopping","Health","Fun","Other"]
     .map(function(n,i){ return {n:n, c:PALETTE[i], subs:DEFAULT_SUBS[n].slice(), budget:0}; });
+
+  // ---------- localisation ----------
+  var I18N = {
+    en: {
+      addExpense:"Add expense", settings:"Settings", prevMonth:"Previous month", nextMonth:"Next month",
+      filterByCategory:"Filter by category", filterBySubcategory:"Filter by subcategory", monthSummary:"Month summary",
+      expensesAria:"Expenses", budgets:"Budgets", enterPin:"Enter PIN",
+      forgotPinHint:"Forgot your PIN? Clear this browser's site data to reset Duit (you'll lose any unsynced local expenses), or unlock from another device signed into the same account and turn the PIN off there.",
+      amountAria:"Amount", category:"Category", subcategoryOptional:"Subcategory (optional)", noteLabel:"Note (optional)",
+      notePlaceholder:"e.g. nasi lemak with team", dateLabel:"Date", paidWith:"Paid with (optional)", delete:"Delete",
+      saveExpense:"Save expense", saveChanges:"Save changes", editExpense:"Edit expense",
+      enterAmountError:"Enter an amount above zero.", pickCategoryError:"Pick a category.",
+      changesSaved:"Changes saved", expenseSaved:"Expense saved", expenseDeleted:"Expense deleted", undo:"Undo",
+      language:"Language", account:"Account", sharedExpenses:"Shared expenses",
+      shareHintText:"Sign in with Google above to invite someone to view, add and edit expenses together.",
+      inviteRowText:"Invite someone to share these expenses", invite:"Invite",
+      viewingShared:"You're viewing shared expenses", leave:"Leave",
+      currencySymbol:"Currency symbol", cycleStartLabel:"Expense cycle starts on day",
+      cycleStartHint:"E.g. 24 means each month runs from the 24th to the 23rd of the next. Use 1 for a normal calendar month.",
+      categories:"Categories", catHintText:"Tap a category to rename it, change its colour or manage its subcategories.",
+      newCategoryPlaceholder:"New category", add:"Add", security:"Security", requirePin:"Require PIN to open",
+      changePinText:"Change PIN", change:"Change", backup:"Backup", exportCsvBtn:"Export CSV", importCsvBtn:"Import CSV",
+      done:"Done", editCategory:"Edit category", name:"Name", monthlyBudget:"Monthly budget (optional)", colour:"Colour",
+      subcategories:"Subcategories", newSubcategoryPlaceholder:"New subcategory", cancel:"Cancel", saveCategory:"Save category",
+      inviteSomeone:"Invite someone",
+      inviteHintText:"Anyone with this link can sign in with their own Google account and get full access to view, add and edit these expenses together. It works once.",
+      copyLink:"Copy link", joinSharedQ:"Join shared expenses?",
+      joinHintText:"You'll be able to view, add and edit expenses together, and so will they. Your own existing expenses stay separate and untouched.",
+      join:"Join",
+      noSubcategories:"No subcategories", budgetPerMonth:"Budget {cur} {amount}/mo",
+      nothingInLabel:"Nothing in {label}", noExpensesYet:"No expenses yet",
+      tapCategoryAgain:"Tap the category again to show everything.", tapAddFirst:"Tap Add expense to log your first one.",
+      oneExpense:"1 expense", nExpenses:"{n} expenses", ofTotal:"of {cur} {total} total", thisMonth:"this month",
+      addedBy:"Added by {who}", you:"you", someoneElse:"someone else", editRow:"Edit",
+      budgetLine:"{cur} {spent} of {cur} {budget}",
+      categoryExists:"{name} already exists", subExists:"{name} is already in this category.",
+      giveCategoryName:"Give the category a name.", categoryClash:"There's already a category called {name}.",
+      subListedTwice:"{name} is listed twice.", categorySavedCount:"Category saved · {count} updated", categorySaved:"Category saved",
+      tapAgainToDelete:"Tap again to delete", categoryDeleted:"{name} deleted. Past expenses keep their label.",
+      noExpensesToExport:"No expenses to export yet", csvExported:"CSV exported", csvExportFailed:"Couldn't export the CSV. Try again.",
+      csvNoExpenses:"That file has no expenses in it.",
+      csvInvalidFormat:"Use a CSV exported from Duit (needs Date, Category and Amount columns).",
+      importedCount:"Imported {count}", importedSkipped:" · {n} skipped (duplicates or blank)",
+      csvReadError:"Couldn't read that file. Try exporting it again.",
+      incorrectPinRetry:"Incorrect PIN. Try again.", tooManyAttempts:"Too many attempts. Try again in {n}s.",
+      enterCurrentPin:"Enter current PIN", confirmNewPin:"Confirm new PIN", setAPin:"Set a PIN",
+      enterCurrentPinHint:"Enter your current PIN to continue.", confirmPinHint:"Enter it again to confirm.",
+      choosePinHint:"Choose a {n}-digit PIN.", incorrectPin:"Incorrect PIN.", pinMismatch:"PINs didn't match. Try again.",
+      pinChanged:"PIN changed", pinSet:"PIN set", pinRemoved:"PIN removed",
+      syncNotSetUp:"Cross-device sync not set up", signInWithGoogle:"Sign in with Google", signedInAs:"Signed in as {who}",
+      googleAccount:"Google account", signOut:"Sign out", notSignedIn:"Not signed in", signInFailed:"Couldn't sign in. Try again.",
+      memberYou:"You", member:"Member", linkCopied:"Link copied", copyFailed:"Couldn't copy — select and copy it manually.",
+      inviteExpired:"This invite link is no longer valid.", inviteUsed:"This invite link has already been used.",
+      ownInvite:"That's your own invite link.", joined:"Joined shared expenses", joinFailed:"Couldn't join. Try again.",
+      inviteCheckFailed:"Couldn't check that invite. Try again.", inviteCreateFailed:"Couldn't create an invite link. Try again.",
+      leftShared:"Left shared expenses", leaveFailed:"Couldn't leave right now. Try again.",
+      syncedToGoogle:"Synced to your Google account. ",
+      syncedDetail:"Open this page on any device where you're signed in and your expenses follow you. Only you can see them.",
+      storedLocally:"Stored on this device only. ",
+      storedLocallyDetail:"Sign in with Google above to sync across devices, or export a CSV backup now and then.",
+      today:"Today", yesterday:"Yesterday",
+      payCash:"Cash", payCard:"Card", payEwallet:"E-wallet", payTransfer:"Transfer", removeLabel:"Remove",
+      storageQuotaFull:"Account storage is full. Export a CSV backup, then delete old months.",
+      syncFailedCached:"Couldn't sync just now. It's saved on this device.",
+      syncFailedSaved:"Couldn't save to your account. Saving on this device instead.",
+      unspecified:"Unspecified"
+    },
+    my: {
+      addExpense:"စရိတ်ထည့်ရန်", settings:"ဆက်တင်များ", prevMonth:"ယခင်လ", nextMonth:"နောက်လ",
+      filterByCategory:"အမျိုးအစားအလိုက် စစ်ထုတ်ရန်", filterBySubcategory:"ခွဲခြားမှုအလိုက် စစ်ထုတ်ရန်", monthSummary:"လစဉ်အကျဉ်းချုပ်",
+      expensesAria:"စရိတ်များ", budgets:"ဘတ်ဂျက်များ", enterPin:"ပင်နံပါတ် ထည့်ပါ",
+      forgotPinHint:"ပင်နံပါတ်မေ့နေပါသလား။ ဤဘရောက်ဆာ၏ ဆိုက်ဒေတာကို ရှင်းလင်းပြီး Duit ကို ပြန်လည်သတ်မှတ်ပါ (စင့်ခ်မလုပ်ရသေးသော ဒေတာများ ပျောက်ဆုံးနိုင်သည်)၊ သို့မဟုတ် အကောင့်တူသုံးနေသော အခြားစက်တစ်ခုမှ လော့ခ်ဖွင့်ပြီး ပင်နံပါတ်ကို ပိတ်ပါ။",
+      amountAria:"ပမာဏ", category:"အမျိုးအစား", subcategoryOptional:"ခွဲခြားမှု (ချန်လှပ်နိုင်သည်)", noteLabel:"မှတ်ချက် (ချန်လှပ်နိုင်သည်)",
+      notePlaceholder:"ဥပမာ - မိတ်ဆွေများနှင့် မုန့်ဟင်းခါး", dateLabel:"ရက်စွဲ", paidWith:"ငွေပေးချေပုံ (ချန်လှပ်နိုင်သည်)", delete:"ဖျက်ပါ",
+      saveExpense:"စရိတ် သိမ်းဆည်းရန်", saveChanges:"အပြောင်းအလဲများ သိမ်းဆည်းရန်", editExpense:"စရိတ် ပြင်ဆင်ရန်",
+      enterAmountError:"သုညထက်ကြီးသော ပမာဏတစ်ခု ထည့်ပါ။", pickCategoryError:"အမျိုးအစားတစ်ခု ရွေးပါ။",
+      changesSaved:"အပြောင်းအလဲများ သိမ်းပြီးပါပြီ", expenseSaved:"စရိတ် သိမ်းပြီးပါပြီ", expenseDeleted:"စရိတ် ဖျက်ပြီးပါပြီ", undo:"နောက်ပြန်လုပ်ရန်",
+      language:"ဘာသာစကား", account:"အကောင့်", sharedExpenses:"မျှဝေထားသော စရိတ်များ",
+      shareHintText:"တစ်ယောက်ယောက်ကို စရိတ်များ အတူတကွ ကြည့်ရှု၊ ထည့်သွင်း၊ ပြင်ဆင်နိုင်ရန် ဖိတ်ကြားရန် အထက်မှ Google ဖြင့် ဝင်ရောက်ပါ။",
+      inviteRowText:"ဤစရိတ်များကို မျှဝေရန် တစ်ယောက်ယောက်ကို ဖိတ်ကြားပါ", invite:"ဖိတ်ကြားရန်",
+      viewingShared:"သင်သည် မျှဝေထားသော စရိတ်များကို ကြည့်ရှုနေသည်", leave:"ထွက်ရန်",
+      currencySymbol:"ငွေကြေးသင်္ကေတ", cycleStartLabel:"စရိတ်ကာလ စတင်မည့်ရက်",
+      cycleStartHint:"ဥပမာ - 24 ဟုထည့်ပါက လစဉ်ကာလသည် ပထမလ၏ 24 ရက်နေ့မှ ဒုတိယလ၏ 23 ရက်နေ့အထိ ဖြစ်ပါမည်။ ပုံမှန်ပြက္ခဒိန်လအတွက် 1 ကိုသုံးပါ။",
+      categories:"အမျိုးအစားများ", catHintText:"အမျိုးအစားတစ်ခု၏ နာမည်ပြောင်းရန်၊ အရောင်ပြောင်းရန် သို့မဟုတ် ခွဲခြားမှုများ စီမံရန် နှိပ်ပါ။",
+      newCategoryPlaceholder:"အမျိုးအစားအသစ်", add:"ထည့်ရန်", security:"လုံခြုံရေး", requirePin:"ဖွင့်ရန် ပင်နံပါတ် လိုအပ်စေရန်",
+      changePinText:"ပင်နံပါတ် ပြောင်းရန်", change:"ပြောင်းရန်", backup:"အရန်သိမ်းမှု", exportCsvBtn:"CSV ထုတ်ယူရန်", importCsvBtn:"CSV တင်သွင်းရန်",
+      done:"ပြီးပါပြီ", editCategory:"အမျိုးအစား ပြင်ဆင်ရန်", name:"နာမည်", monthlyBudget:"လစဉ်ဘတ်ဂျက် (ချန်လှပ်နိုင်သည်)", colour:"အရောင်",
+      subcategories:"ခွဲခြားမှုများ", newSubcategoryPlaceholder:"ခွဲခြားမှုအသစ်", cancel:"ပယ်ဖျက်ရန်", saveCategory:"အမျိုးအစား သိမ်းဆည်းရန်",
+      inviteSomeone:"တစ်ယောက်ယောက်ကို ဖိတ်ကြားရန်",
+      inviteHintText:"ဤလင့်ခ်ရှိသူ မည်သူမဆို ၎င်း၏ကိုယ်ပိုင် Google အကောင့်ဖြင့် ဝင်ရောက်ပြီး ဤစရိတ်များကို အတူတကွ ကြည့်ရှု၊ ထည့်သွင်း၊ ပြင်ဆင်ခွင့် အပြည့်အဝ ရရှိပါမည်။ တစ်ကြိမ်သာ အသုံးပြု၍ရပါသည်။",
+      copyLink:"လင့်ခ် ကူးယူရန်", joinSharedQ:"မျှဝေထားသော စရိတ်များသို့ ဝင်ရောက်မလား။",
+      joinHintText:"သင်တို့ နှစ်ဦးစလုံး စရိတ်များကို အတူတကွ ကြည့်ရှု၊ ထည့်သွင်း၊ ပြင်ဆင်နိုင်ပါမည်။ သင့်ကိုယ်ပိုင် ရှိပြီးသား စရိတ်များမူ သီးခြားစီ မပြောင်းလဲဘဲ ရှိနေပါမည်။",
+      join:"ဝင်ရောက်ရန်",
+      noSubcategories:"ခွဲခြားမှု မရှိပါ", budgetPerMonth:"လစဉ်ဘတ်ဂျက် {cur} {amount}",
+      nothingInLabel:"{label} တွင် မည်သည့်အရာမျှ မရှိပါ", noExpensesYet:"စရိတ်များ မရှိသေးပါ",
+      tapCategoryAgain:"အားလုံးပြရန် အမျိုးအစားကို ထပ်နှိပ်ပါ။", tapAddFirst:"ပထမဆုံးစရိတ်ကို မှတ်တမ်းတင်ရန် \"စရိတ်ထည့်ရန်\" ကိုနှိပ်ပါ။",
+      oneExpense:"1 ခု", nExpenses:"{n} ခု", ofTotal:"{cur} {total} အနက်မှ", thisMonth:"ယခုလအတွက်",
+      addedBy:"{who} မှ ထည့်သွင်းခဲ့သည်", you:"သင်", someoneElse:"တစ်ယောက်ယောက်", editRow:"ပြင်ဆင်ရန်",
+      budgetLine:"{cur} {budget} အနက်မှ {cur} {spent}",
+      categoryExists:"{name} ရှိပြီးသားဖြစ်သည်", subExists:"{name} သည် ဤအမျိုးအစားတွင် ရှိပြီးသားဖြစ်သည်။",
+      giveCategoryName:"အမျိုးအစားအတွက် နာမည်တစ်ခု ပေးပါ။", categoryClash:"{name} ဟု အမည်ရှိသော အမျိုးအစား ရှိပြီးသားဖြစ်သည်။",
+      subListedTwice:"{name} ကို နှစ်ကြိမ်ထည့်မိထားသည်။", categorySavedCount:"အမျိုးအစား သိမ်းပြီးပါပြီ · {count} ပြင်ဆင်ပြီး", categorySaved:"အမျိုးအစား သိမ်းပြီးပါပြီ",
+      tapAgainToDelete:"ဖျက်ရန် ထပ်နှိပ်ပါ", categoryDeleted:"{name} ကို ဖျက်လိုက်ပါပြီ။ ယခင်စရိတ်များသည် ၎င်းတို့၏ အမည်ကို ဆက်ထိန်းထားပါမည်။",
+      noExpensesToExport:"ထုတ်ယူရန် စရိတ်များ မရှိသေးပါ", csvExported:"CSV ထုတ်ယူပြီးပါပြီ", csvExportFailed:"CSV ထုတ်ယူ၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+      csvNoExpenses:"ဤဖိုင်တွင် စရိတ်များ မပါဝင်ပါ။",
+      csvInvalidFormat:"Duit မှ ထုတ်ယူထားသော CSV ကိုသာ သုံးပါ (ရက်စွဲ၊ အမျိုးအစားနှင့် ပမာဏ ကော်လံများ လိုအပ်သည်)။",
+      importedCount:"{count} တင်သွင်းပြီးပါပြီ", importedSkipped:" · {n} ကျော်သွားသည် (ထပ်နေသည် သို့မဟုတ် ဗလာဖြစ်နေသည်)",
+      csvReadError:"ဤဖိုင်ကို ဖတ်၍ မရပါ။ ထပ်မံထုတ်ယူကြည့်ပါ။",
+      incorrectPinRetry:"ပင်နံပါတ် မှားနေသည်။ ထပ်စမ်းကြည့်ပါ။", tooManyAttempts:"ကြိမ်ရေများစွာ မှားနေပါပြီ။ {n} စက္ကန့်အကြာတွင် ထပ်စမ်းကြည့်ပါ။",
+      enterCurrentPin:"လက်ရှိပင်နံပါတ် ထည့်ပါ", confirmNewPin:"ပင်နံပါတ်အသစ်ကို အတည်ပြုပါ", setAPin:"ပင်နံပါတ်တစ်ခု သတ်မှတ်ပါ",
+      enterCurrentPinHint:"ဆက်လက်ရန် လက်ရှိပင်နံပါတ်ကို ထည့်ပါ။", confirmPinHint:"အတည်ပြုရန် ထပ်မံထည့်ပါ။",
+      choosePinHint:"ဂဏန်း {n} လုံးပါသော ပင်နံပါတ် ရွေးပါ။", incorrectPin:"ပင်နံပါတ် မှားနေသည်။", pinMismatch:"ပင်နံပါတ်များ မတူညီပါ။ ထပ်စမ်းကြည့်ပါ။",
+      pinChanged:"ပင်နံပါတ် ပြောင်းလဲပြီးပါပြီ", pinSet:"ပင်နံပါတ် သတ်မှတ်ပြီးပါပြီ", pinRemoved:"ပင်နံပါတ် ဖယ်ရှားပြီးပါပြီ",
+      syncNotSetUp:"စက်များကြား စင့်ခ်လုပ်ခြင်း သတ်မှတ်မထားပါ", signInWithGoogle:"Google ဖြင့် ဝင်ရောက်ပါ", signedInAs:"{who} အဖြစ် ဝင်ရောက်ထားသည်",
+      googleAccount:"Google အကောင့်", signOut:"ထွက်ရန်", notSignedIn:"ဝင်ရောက်ထားခြင်း မရှိပါ", signInFailed:"ဝင်ရောက်၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+      memberYou:"သင်", member:"အဖွဲ့ဝင်", linkCopied:"လင့်ခ် ကူးယူပြီးပါပြီ", copyFailed:"ကူးယူ၍ မရပါ — ကိုယ်တိုင်ရွေးပြီး ကူးယူပါ။",
+      inviteExpired:"ဤဖိတ်ကြားလင့်ခ်သည် သက်တမ်းကုန်သွားပါပြီ။", inviteUsed:"ဤဖိတ်ကြားလင့်ခ်ကို အသုံးပြုပြီးသားဖြစ်သည်။",
+      ownInvite:"ဒါက သင့်ကိုယ်ပိုင် ဖိတ်ကြားလင့်ခ်ပါ။", joined:"မျှဝေထားသော စရိတ်များသို့ ဝင်ရောက်ပြီးပါပြီ", joinFailed:"ဝင်ရောက်၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+      inviteCheckFailed:"ဖိတ်ကြားမှုကို စစ်ဆေး၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။", inviteCreateFailed:"ဖိတ်ကြားလင့်ခ် ဖန်တီး၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+      leftShared:"မျှဝေထားသော စရိတ်များမှ ထွက်ခွာပြီးပါပြီ", leaveFailed:"ယခု ထွက်ခွာ၍ မရပါ။ ထပ်စမ်းကြည့်ပါ။",
+      syncedToGoogle:"သင့် Google အကောင့်သို့ စင့်ခ်လုပ်ထားသည်။ ",
+      syncedDetail:"ဝင်ရောက်ထားသော စက်မှန်သမျှတွင် ဤစာမျက်နှာကိုဖွင့်ပါက သင့်စရိတ်များ ပါလာပါမည်။ သင်တစ်ဦးတည်းသာ မြင်နိုင်ပါသည်။",
+      storedLocally:"ဤစက်တွင်သာ သိမ်းဆည်းထားသည်။ ",
+      storedLocallyDetail:"စက်များအကြား စင့်ခ်လုပ်ရန် အပေါ်မှ Google ဖြင့်ဝင်ရောက်ပါ၊ သို့မဟုတ် တစ်ခါတစ်ရံ CSV အရန်သိမ်းမှု ထုတ်ယူထားပါ။",
+      today:"ယနေ့", yesterday:"မနေ့က",
+      payCash:"ငွေသား", payCard:"ကတ်", payEwallet:"အီးဝေါလက်", payTransfer:"ငွေလွှဲ", removeLabel:"ဖယ်ရှားရန်",
+      storageQuotaFull:"အကောင့်သိုလှောင်မှု ပြည့်နေပါပြီ။ CSV အရန်သိမ်းမှု ထုတ်ယူပြီး ဟောင်းသောလများကို ဖျက်ပါ။",
+      syncFailedCached:"ယခု စင့်ခ်လုပ်၍ မရပါ။ ဤစက်တွင် သိမ်းထားပါပြီ။",
+      syncFailedSaved:"သင့်အကောင့်သို့ သိမ်း၍ မရပါ။ ဤစက်တွင်သာ သိမ်းဆည်းပါမည်။",
+      unspecified:"သတ်မှတ်မထား"
+    }
+  };
+  function isMy(){ return (state.settings.lang||"en")==="my"; }
+  function t(key, vars){
+    var lang = isMy() ? "my" : "en";
+    var s = (I18N[lang] && I18N[lang][key]!=null) ? I18N[lang][key] : (I18N.en[key]!=null ? I18N.en[key] : key);
+    if(vars) Object.keys(vars).forEach(function(k){ s = s.split("{"+k+"}").join(vars[k]); });
+    return s;
+  }
+  function expensesPhrase(n){
+    if(isMy()) return t("nExpenses",{n:n});
+    return n===1 ? t("oneExpense") : t("nExpenses",{n:n});
+  }
+  var PAY_KEYS = {"Cash":"payCash","Card":"payCard","E-wallet":"payEwallet","Transfer":"payTransfer"};
+  function payLabel(v){ return PAY_KEYS[v] ? t(PAY_KEYS[v]) : v; }
+  var MY_MONTHS = ["ဇန်နဝါရီ","ဖေဖော်ဝါရီ","မတ်","ဧပြီ","မေ","ဇွန်","ဇူလိုင်","သြဂုတ်","စက်တင်ဘာ","အောက်တိုဘာ","နိုဝင်ဘာ","ဒီဇင်ဘာ"];
+  var MY_WEEKDAYS = ["နွေ","လာ","ဂါ","ဟူး","ကြာ","သော","နေ"];
+  function fmtMonthYear(d){
+    if(isMy()) return MY_MONTHS[d.getMonth()]+" "+d.getFullYear();
+    return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+  }
+  function fmtDayMonth(d){
+    if(isMy()) return d.getDate()+" "+MY_MONTHS[d.getMonth()];
+    return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+  }
+  function fmtWeekdayDayMonth(d){
+    if(isMy()) return MY_WEEKDAYS[d.getDay()]+"၊ "+d.getDate()+" "+MY_MONTHS[d.getMonth()];
+    return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  }
+
   function normalizeSettings(){
     (state.settings.cats||[]).forEach(function(c){
       if(!Array.isArray(c.subs)) c.subs = DEFAULT_SUBS[c.n] ? DEFAULT_SUBS[c.n].slice() : [];
@@ -391,9 +556,10 @@ button{cursor:pointer}
     if(typeof state.settings.cycleStartDay!=="number" || !isFinite(state.settings.cycleStartDay) || state.settings.cycleStartDay<1 || state.settings.cycleStartDay>28){
       state.settings.cycleStartDay = 1;
     }
+    if(state.settings.lang!=="en" && state.settings.lang!=="my") state.settings.lang = "en";
   }
 
-  var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null, cycleStartDay:1 } };
+  var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null, cycleStartDay:1, lang:"en" } };
   var view = { month: null, filter:null, subFilter:null, editing:null, cat:null, sub:null, pay:null };
   var draft = null;
 
@@ -431,12 +597,11 @@ button{cursor:pointer}
     var day = state.settings.cycleStartDay||1;
     if(day<=1){
       var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1, 1);
-      return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+      return fmtMonthYear(d);
     }
     var b = cycleBounds(ym);
     var endInclusive = new Date(b.end.getFullYear(), b.end.getMonth(), b.end.getDate()-1);
-    var fmt = function(d){ return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"}); };
-    return fmt(b.start)+" – "+fmt(endInclusive)+" "+endInclusive.getFullYear();
+    return fmtDayMonth(b.start)+" – "+fmtDayMonth(endInclusive)+" "+endInclusive.getFullYear();
   }
   function shiftMonth(ym,delta){
     var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1+delta, 1);
@@ -444,10 +609,10 @@ button{cursor:pointer}
   }
   function dayLabel(date){
     var p=date.split("-"); var d=new Date(+p[0],+p[1]-1,+p[2]);
-    if(date===todayStr()) return "Today";
+    if(date===todayStr()) return t("today");
     var y=new Date(); y.setDate(y.getDate()-1);
-    if(date===(y.getFullYear()+"-"+pad(y.getMonth()+1)+"-"+pad(y.getDate()))) return "Yesterday";
-    return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+    if(date===(y.getFullYear()+"-"+pad(y.getMonth()+1)+"-"+pad(y.getDate()))) return t("yesterday");
+    return fmtWeekdayDayMonth(d);
   }
   function el(tag, cls, text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
 
@@ -496,10 +661,10 @@ button{cursor:pointer}
   }
   function dbError(e){
     var code = e && e.code;
-    if(code==="quota_exceeded"){ toast("Account storage is full. Export a CSV backup, then delete old months."); return; }
-    if(code==="unavailable" || code==="resource_exhausted"){ toast("Couldn't sync just now. It's saved on this device."); return; }
+    if(code==="quota_exceeded"){ toast(t("storageQuotaFull")); return; }
+    if(code==="unavailable" || code==="resource_exhausted"){ toast(t("syncFailedCached")); return; }
     cloud=false; updateStatus();
-    toast("Couldn't save to your account. Saving on this device instead.");
+    toast(t("syncFailedSaved"));
   }
   function persistMonth(key){
     saveLocal();
@@ -578,7 +743,7 @@ button{cursor:pointer}
       if(code==="auth/popup-blocked" || code==="auth/cancelled-popup-request" || code==="auth/operation-not-supported-in-this-environment"){
         auth.signInWithRedirect(provider);
       } else if(code!=="auth/popup-closed-by-user"){
-        toast("Couldn't sign in. Try again.");
+        toast(t("signInFailed"));
       }
     });
   }
@@ -586,20 +751,20 @@ button{cursor:pointer}
   function renderAuthUI(){
     var row=$("acctRow"); if(!row) return;
     if(!firebaseConfigured() || typeof firebase==="undefined"){
-      $("acctLabel").textContent = "Cross-device sync not set up";
-      $("acctBtn").textContent = "Sign in with Google";
+      $("acctLabel").textContent = t("syncNotSetUp");
+      $("acctBtn").textContent = t("signInWithGoogle");
       $("acctBtn").disabled = true;
       $("acctBtn").onclick = null;
       return;
     }
     $("acctBtn").disabled = false;
     if(currentUser){
-      $("acctLabel").textContent = "Signed in as "+(currentUser.email||currentUser.displayName||"Google account");
-      $("acctBtn").textContent = "Sign out";
+      $("acctLabel").textContent = t("signedInAs",{who:(currentUser.email||currentUser.displayName||t("googleAccount"))});
+      $("acctBtn").textContent = t("signOut");
       $("acctBtn").onclick = signOutGoogle;
     } else {
-      $("acctLabel").textContent = "Not signed in";
-      $("acctBtn").textContent = "Sign in with Google";
+      $("acctLabel").textContent = t("notSignedIn");
+      $("acctBtn").textContent = t("signInWithGoogle");
       $("acctBtn").onclick = signInGoogle;
     }
   }
@@ -651,18 +816,18 @@ button{cursor:pointer}
     createInvite().then(function(code){
       $("inviteLink").value = location.origin+location.pathname+"?join="+code;
     }).catch(function(){
-      toast("Couldn't create an invite link. Try again.");
+      toast(t("inviteCreateFailed"));
     });
   }
   function copyInviteLink(){
     var val = $("inviteLink").value; if(!val) return;
     function fallbackCopy(){
       $("inviteLink").select();
-      try{ document.execCommand("copy"); toast("Link copied"); }
-      catch(e){ toast("Couldn't copy — select and copy it manually."); }
+      try{ document.execCommand("copy"); toast(t("linkCopied")); }
+      catch(e){ toast(t("copyFailed")); }
     }
     if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(val).then(function(){ toast("Link copied"); }, fallbackCopy);
+      navigator.clipboard.writeText(val).then(function(){ toast(t("linkCopied")); }, fallbackCopy);
     } else fallbackCopy();
   }
   function checkPendingJoinFromUrl(){
@@ -695,10 +860,10 @@ button{cursor:pointer}
   function performJoin(code){
     var inviteRef = db.doc("invites/"+code);
     inviteRef.get().then(function(doc){
-      if(!doc.exists){ $("joinErr").textContent = "This invite link is no longer valid."; return; }
+      if(!doc.exists){ $("joinErr").textContent = t("inviteExpired"); return; }
       var data = doc.data();
-      if(data.used){ $("joinErr").textContent = "This invite link has already been used."; return; }
-      if(data.spaceId===userId){ $("joinErr").textContent = "That's your own invite link."; return; }
+      if(data.used){ $("joinErr").textContent = t("inviteUsed"); return; }
+      if(data.spaceId===userId){ $("joinErr").textContent = t("ownInvite"); return; }
       var newSpaceId = data.spaceId;
       inviteRef.update({used:true, claimedBy:userId}).then(function(){
         return db.doc("memberships/"+userId).set({spaceId:newSpaceId});
@@ -710,12 +875,12 @@ button{cursor:pointer}
         closeSheet();
         subscribeCloud();
         refreshMembers();
-        toast("Joined shared expenses");
+        toast(t("joined"));
       }).catch(function(){
-        $("joinErr").textContent = "Couldn't join. Try again.";
+        $("joinErr").textContent = t("joinFailed");
       });
     }).catch(function(){
-      $("joinErr").textContent = "Couldn't check that invite. Try again.";
+      $("joinErr").textContent = t("inviteCheckFailed");
     });
   }
   function leaveShared(){
@@ -728,9 +893,9 @@ button{cursor:pointer}
       subscribeCloud();
       refreshMembers();
       render();
-      toast("Left shared expenses");
+      toast(t("leftShared"));
     }).catch(function(){
-      toast("Couldn't leave right now. Try again.");
+      toast(t("leaveFailed"));
     });
   }
   function renderShareUI(){
@@ -748,7 +913,7 @@ button{cursor:pointer}
     }
     everyone.forEach(function(m){
       var row=el("div","set-row");
-      row.appendChild(el("span",null, m.uid===userId ? "You" : (m.email||"Member")));
+      row.appendChild(el("span",null, m.uid===userId ? t("memberYou") : (m.email||t("member"))));
       list.appendChild(row);
     });
     inviteRow.hidden = false;
@@ -784,13 +949,13 @@ button{cursor:pointer}
     if(view.subFilter && !bySub[view.subFilter]) view.subFilter=null;
     var shown = view.subFilter ? inCat.filter(function(x){ return (x.sub||"Unspecified")===view.subFilter; }) : inCat;
     var shownTotal = shown.reduce(function(a,x){ return a+x.amt; },0);
-    var label = view.filter ? view.filter + (view.subFilter ? " › "+view.subFilter : "") : "";
+    var label = view.filter ? view.filter + (view.subFilter ? " › "+(view.subFilter==="Unspecified"?t("unspecified"):view.subFilter) : "") : "";
 
-    var t = $("total"); t.textContent="";
-    t.appendChild(el("span","cur",cur)); t.appendChild(document.createTextNode(money(shownTotal)));
+    var totalEl = $("total"); totalEl.textContent="";
+    totalEl.appendChild(el("span","cur",cur)); totalEl.appendChild(document.createTextNode(money(shownTotal)));
     $("sub").textContent = view.filter
-      ? label + " · " + shown.length + (shown.length===1?" expense":" expenses") + " of " + cur + " " + money(total) + " total"
-      : items.length + (items.length===1?" expense":" expenses") + " this month";
+      ? label + " · " + expensesPhrase(shown.length) + " " + t("ofTotal",{cur:cur, total:money(total)})
+      : expensesPhrase(items.length) + " " + t("thisMonth");
 
     // strip + legend
     var cats = Object.keys(byCat).sort(function(a,b){ return byCat[b]-byCat[a]; });
@@ -821,7 +986,7 @@ button{cursor:pointer}
       subKeys.forEach(function(k){
         var b=el("button","chip"); b.type="button";
         b.setAttribute("aria-pressed", String(view.subFilter===k));
-        b.appendChild(el("span",null,k)); b.appendChild(el("span","amt num",money(bySub[k])));
+        b.appendChild(el("span",null, k==="Unspecified" ? t("unspecified") : k)); b.appendChild(el("span","amt num",money(bySub[k])));
         b.onclick=function(){ view.subFilter = view.subFilter===k ? null : k; render(); };
         sl.appendChild(b);
       });
@@ -833,8 +998,8 @@ button{cursor:pointer}
     var list=$("list"); list.textContent="";
     if(!shown.length){
       var e=el("div","empty");
-      e.appendChild(el("strong",null, items.length ? "Nothing in "+label : "No expenses yet"));
-      e.appendChild(el("span",null, items.length ? "Tap the category again to show everything." : "Tap Add expense to log your first one."));
+      e.appendChild(el("strong",null, items.length ? t("nothingInLabel",{label:label}) : t("noExpensesYet")));
+      e.appendChild(el("span",null, items.length ? t("tapCategoryAgain") : t("tapAddFirst")));
       list.appendChild(e); return;
     }
     shown.sort(function(a,b){ return a.date===b.date ? b.ts-a.ts : (a.date<b.date?1:-1); });
@@ -846,15 +1011,15 @@ button{cursor:pointer}
       d.appendChild(h);
       g.items.forEach(function(x){
         var r=el("button","row"); r.type="button";
-        r.setAttribute("aria-label", "Edit "+x.cat+(x.sub?" "+x.sub:"")+" "+cur+" "+money(x.amt));
+        r.setAttribute("aria-label", t("editRow")+" "+x.cat+(x.sub?" "+x.sub:"")+" "+cur+" "+money(x.amt));
         var bar=el("span","bar"); bar.style.background=catColor(x.cat);
         var w=el("span","what"); var cn=el("div","cat",x.cat);
         if(x.sub){ cn.appendChild(el("span","subname"," › "+x.sub)); }
         w.appendChild(cn);
-        var meta=[x.note,x.pay].filter(Boolean).join(" · ");
+        var meta=[x.note,payLabel(x.pay)].filter(Boolean).join(" · ");
         if(meta) w.appendChild(el("div","note",meta));
         if(members.length>1 && x.by){
-          w.appendChild(el("div","note","Added by "+(x.by===userId ? "you" : (x.byName||"someone else"))));
+          w.appendChild(el("div","note",t("addedBy",{who: x.by===userId ? t("you") : (x.byName||t("someoneElse"))})));
         }
         r.appendChild(bar); r.appendChild(w); r.appendChild(el("span","val num",money(x.amt)));
         r.onclick=function(){ openExpense(x); };
@@ -872,13 +1037,13 @@ button{cursor:pointer}
     var box=$("budgets"); box.textContent="";
     box.hidden = !rows.length;
     if(!rows.length) return;
-    box.appendChild(el("span","field-label","Budgets"));
+    box.appendChild(el("span","field-label",t("budgets")));
     rows.forEach(function(r){
       var over = r.spent > r.c.budget;
       var row=el("div","budget-row");
       var head=el("div","budget-head");
       head.appendChild(el("span",null,r.c.n));
-      head.appendChild(el("span","amt num"+(over?" over":""), cur+" "+money(r.spent)+" of "+cur+" "+money(r.c.budget)));
+      head.appendChild(el("span","amt num"+(over?" over":""), t("budgetLine",{cur:cur, spent:money(r.spent), budget:money(r.c.budget)})));
       row.appendChild(head);
       var bar=el("div","budget-bar");
       var fill=el("span");
@@ -932,7 +1097,7 @@ button{cursor:pointer}
   function renderPayPick(){
     var box=$("payPick"); box.textContent="";
     PAYS.forEach(function(p){
-      var b=el("button",null,p); b.type="button"; b.setAttribute("role","radio");
+      var b=el("button",null,payLabel(p)); b.type="button"; b.setAttribute("role","radio");
       b.setAttribute("aria-checked", String(view.pay===p));
       b.onclick=function(){ view.pay = view.pay===p ? null : p; renderPayPick(); };
       box.appendChild(b);
@@ -945,8 +1110,8 @@ button{cursor:pointer}
     view.cat = x ? x.cat : (cats.indexOf(state.settings.lastCat)>-1 ? state.settings.lastCat : cats[0]);
     view.pay = x ? (x.pay||null) : null;
     view.sub = x ? (x.sub||null) : null;
-    $("expTitle").textContent = x ? "Edit expense" : "Add expense";
-    $("saveBtn").textContent = x ? "Save changes" : "Save expense";
+    $("expTitle").textContent = x ? t("editExpense") : t("addExpense");
+    $("saveBtn").textContent = x ? t("saveChanges") : t("saveExpense");
     $("delBtn").hidden = !x;
     $("tillCur").textContent = state.settings.currency||"";
     $("amount").value = x ? (x.amt/100).toFixed(2) : "";
@@ -969,8 +1134,8 @@ button{cursor:pointer}
 
   function saveExpense(){
     var amt = parseAmount($("amount").value);
-    if(amt<=0){ $("expErr").textContent="Enter an amount above zero."; $("amount").focus(); return; }
-    if(!view.cat){ $("expErr").textContent="Pick a category."; return; }
+    if(amt<=0){ $("expErr").textContent=t("enterAmountError"); $("amount").focus(); return; }
+    if(!view.cat){ $("expErr").textContent=t("pickCategoryError"); return; }
     var date = $("date").value || todayStr();
     var note = $("note").value.trim();
     var old = view.editing;
@@ -990,7 +1155,7 @@ button{cursor:pointer}
     if(view.month!==newCycleYm){ view.filter=null; view.subFilter=null; }
     view.month = newCycleYm;
     closeSheet(); render();
-    toast(old ? "Changes saved" : "Expense saved");
+    toast(old ? t("changesSaved") : t("expenseSaved"));
   }
 
   function deleteExpense(){
@@ -998,7 +1163,7 @@ button{cursor:pointer}
     var key=ymOf(x.date);
     state.months[key]=(state.months[key]||[]).filter(function(i){ return i.id!==x.id; });
     persistMonth(key); closeSheet(); render();
-    toast("Expense deleted", function(){
+    toast(t("expenseDeleted"), function(){
       (state.months[key]=state.months[key]||[]).push(x); persistMonth(key); render();
     });
   }
@@ -1015,14 +1180,15 @@ button{cursor:pointer}
   function renderSettings(){
     $("currency").value = state.settings.currency||"";
     $("cycleDay").value = state.settings.cycleStartDay||1;
+    $("langSelect").value = state.settings.lang||"en";
     var box=$("catList"); box.textContent="";
     state.settings.cats.forEach(function(c,i){
       var r=el("button","set-row cat-row"); r.type="button";
-      r.setAttribute("aria-label","Edit "+c.n);
+      r.setAttribute("aria-label",t("editRow")+" "+c.n);
       var l=el("span","chip"); var dot=el("span","dot"); dot.style.background=c.c;
       var txt=el("span"); txt.appendChild(document.createTextNode(c.n));
-      var metaParts = [c.subs.length ? c.subs.join(", ") : "No subcategories"];
-      if(c.budget>0) metaParts.push("Budget "+(state.settings.currency||"")+" "+money(c.budget)+"/mo");
+      var metaParts = [c.subs.length ? c.subs.join(", ") : t("noSubcategories")];
+      if(c.budget>0) metaParts.push(t("budgetPerMonth",{cur:(state.settings.currency||""), amount:money(c.budget)}));
       txt.appendChild(el("span","meta", metaParts.join(" · ")));
       l.appendChild(dot); l.appendChild(txt);
       l.style.border="0"; l.style.background="transparent"; l.style.padding="0"; l.style.alignItems="flex-start"; dot.style.marginTop="6px";
@@ -1041,11 +1207,11 @@ button{cursor:pointer}
   function updateStatus(){
     var s=$("status"); s.textContent="";
     if(cloud){
-      s.appendChild(el("b",null,"Synced to your Google account. "));
-      s.appendChild(document.createTextNode("Open this page on any device where you're signed in and your expenses follow you. Only you can see them."));
+      s.appendChild(el("b",null,t("syncedToGoogle")));
+      s.appendChild(document.createTextNode(t("syncedDetail")));
     } else {
-      s.appendChild(el("b",null,"Stored on this device only. "));
-      s.appendChild(document.createTextNode("Sign in with Google above to sync across devices, or export a CSV backup now and then."));
+      s.appendChild(el("b",null,t("storedLocally")));
+      s.appendChild(document.createTextNode(t("storedLocallyDetail")));
     }
   }
   $("openSettings").onclick=function(){ renderSettings(); openSheet($("setSheet")); };
@@ -1063,9 +1229,16 @@ button{cursor:pointer}
     view.month = currentCycleYm(); view.filter=null; view.subFilter=null;
     render();
   });
+  $("langSelect").addEventListener("change",function(){
+    state.settings.lang = $("langSelect").value==="my" ? "my" : "en";
+    persistSettings();
+    applyI18n();
+    render();
+    renderSettings();
+  });
   function addCategory(){
     var n=$("newCat").value.trim(); if(!n) return;
-    if(state.settings.cats.some(function(c){ return c.n.toLowerCase()===n.toLowerCase(); })){ toast(n+" already exists"); return; }
+    if(state.settings.cats.some(function(c){ return c.n.toLowerCase()===n.toLowerCase(); })){ toast(t("categoryExists",{name:n})); return; }
     var used = state.settings.cats.map(function(c){ return c.c; });
     var color = PALETTE.find(function(p){ return used.indexOf(p)<0; }) || PALETTE[state.settings.cats.length%PALETTE.length];
     state.settings.cats.push({n:n,c:color,subs:[],budget:0}); $("newCat").value="";
@@ -1093,7 +1266,7 @@ button{cursor:pointer}
     var colours = PALETTE.indexOf(draft.c)<0 ? PALETTE.concat([draft.c]) : PALETTE;
     colours.forEach(function(col){
       var b=el("button","swatch"); b.type="button"; b.setAttribute("role","radio");
-      b.setAttribute("aria-checked", String(draft.c===col)); b.setAttribute("aria-label","Colour "+col);
+      b.setAttribute("aria-checked", String(draft.c===col)); b.setAttribute("aria-label",t("colour")+" "+col);
       b.style.background=col;
       b.onclick=function(){ draft.c=col; renderSwatches(); };
       box.appendChild(b);
@@ -1103,29 +1276,29 @@ button{cursor:pointer}
     var box=$("subEditList"); box.textContent="";
     draft.subs.forEach(function(s,idx){
       var r=el("div","sub-edit");
-      var inp=el("input","text"); inp.value=s.name; inp.maxLength=24; inp.setAttribute("aria-label","Subcategory name");
+      var inp=el("input","text"); inp.value=s.name; inp.maxLength=24; inp.setAttribute("aria-label",t("subcategories"));
       inp.oninput=function(){ s.name=inp.value; };
-      var x=el("button","x","×"); x.type="button"; x.setAttribute("aria-label","Remove "+(s.name||"subcategory"));
+      var x=el("button","x","×"); x.type="button"; x.setAttribute("aria-label",t("removeLabel")+" "+(s.name||t("subcategories")));
       x.onclick=function(){ draft.subs.splice(idx,1); renderSubEdit(); };
       r.appendChild(inp); r.appendChild(x); box.appendChild(r);
     });
   }
   function addSub(){
     var n=$("newSub").value.trim(); if(!n) return;
-    if(draft.subs.some(function(s){ return s.name.trim().toLowerCase()===n.toLowerCase(); })){ $("catErr").textContent=n+" is already in this category."; return; }
+    if(draft.subs.some(function(s){ return s.name.trim().toLowerCase()===n.toLowerCase(); })){ $("catErr").textContent=t("subExists",{name:n}); return; }
     draft.subs.push({orig:null, name:n}); $("newSub").value=""; $("catErr").textContent="";
     renderSubEdit(); $("newSub").focus();
   }
   function saveCategory(){
     var name=$("catName").value.trim();
-    if(!name){ $("catErr").textContent="Give the category a name."; $("catName").focus(); return; }
+    if(!name){ $("catErr").textContent=t("giveCategoryName"); $("catName").focus(); return; }
     var clash = state.settings.cats.some(function(c,i){ return i!==draft.i && c.n.toLowerCase()===name.toLowerCase(); });
-    if(clash){ $("catErr").textContent="There's already a category called "+name+"."; return; }
+    if(clash){ $("catErr").textContent=t("categoryClash",{name:name}); return; }
     var seen={}, subs=[], subRename={};
     for(var k=0;k<draft.subs.length;k++){
       var s=draft.subs[k], sn=s.name.trim();
       if(!sn) continue;
-      if(seen[sn.toLowerCase()]){ $("catErr").textContent=sn+" is listed twice."; return; }
+      if(seen[sn.toLowerCase()]){ $("catErr").textContent=t("subListedTwice",{name:sn}); return; }
       seen[sn.toLowerCase()]=1; subs.push(sn);
       if(s.orig && s.orig!==sn) subRename[s.orig]=sn;
     }
@@ -1152,20 +1325,20 @@ button{cursor:pointer}
     if(view.filter===oldName){ view.filter=name; if(view.subFilter && subRename[view.subFilter]) view.subFilter=subRename[view.subFilter]; }
     persistSettings(); render();
     closeSheet();
-    toast(count ? "Category saved · "+count+(count===1?" expense":" expenses")+" updated" : "Category saved");
+    toast(count ? t("categorySavedCount",{count:expensesPhrase(count)}) : t("categorySaved"));
   }
-  function disarmDelete(){ delArmed=false; clearTimeout(delTimer); $("delCat").textContent="Delete"; }
+  function disarmDelete(){ delArmed=false; clearTimeout(delTimer); $("delCat").textContent=t("delete"); }
   function deleteCategory(){
     if(state.settings.cats.length<=1) return;
     if(!delArmed){
-      delArmed=true; $("delCat").textContent="Tap again to delete";
+      delArmed=true; $("delCat").textContent=t("tapAgainToDelete");
       delTimer=setTimeout(disarmDelete, 3000); return;
     }
     disarmDelete();
     var idx=draft.i, removed=state.settings.cats.splice(idx,1)[0];
     if(view.filter===removed.n){ view.filter=null; view.subFilter=null; }
     persistSettings(); render(); closeSheet();
-    toast(removed.n+" deleted. Past expenses keep their label.", function(){
+    toast(t("categoryDeleted",{name:removed.n}), function(){
       state.settings.cats.splice(idx,0,removed); persistSettings(); render();
       if(openSheetEl===$("setSheet")) renderSettings();
     });
@@ -1179,7 +1352,7 @@ button{cursor:pointer}
   function csvCell(v){ v=String(v==null?"":v); return /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
   function exportCsv(){
     var all=[]; Object.keys(state.months).forEach(function(k){ all=all.concat(state.months[k]||[]); });
-    if(!all.length){ toast("No expenses to export yet"); return; }
+    if(!all.length){ toast(t("noExpensesToExport")); return; }
     all.sort(function(a,b){ return a.date===b.date ? a.ts-b.ts : (a.date<b.date?-1:1); });
     var rows=[["Date","Category","Subcategory","Amount","Payment","Note"]].concat(all.map(function(x){ return [x.date,x.cat,x.sub||"",(x.amt/100).toFixed(2),x.pay||"",x.note||""]; }));
     var csv=rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
@@ -1191,8 +1364,8 @@ button{cursor:pointer}
     if(window.claude && typeof window.claude.use==="function"){
       window.claude.use("downloads").then(function(dl){
         if(!dl){ fallback(); return; }
-        dl.save({filename:name, data:csv}).then(function(){ toast("CSV exported"); }, function(e){
-          if(!e || e.code!=="declined") toast("Couldn't export the CSV. Try again.");
+        dl.save({filename:name, data:csv}).then(function(){ toast(t("csvExported")); }, function(e){
+          if(!e || e.code!=="declined") toast(t("csvExportFailed"));
         });
       });
     } else fallback();
@@ -1219,11 +1392,11 @@ button{cursor:pointer}
   }
   function importCsv(text){
     var rows=parseCsv(text);
-    if(rows.length<2){ toast("That file has no expenses in it."); return; }
+    if(rows.length<2){ toast(t("csvNoExpenses")); return; }
     var head=rows[0].map(function(h){ return h.trim().toLowerCase(); });
     var col=function(n){ return head.indexOf(n); };
     var iD=col("date"), iC=col("category"), iS=col("subcategory"), iA=col("amount"), iP=col("payment"), iN=col("note");
-    if(iD<0||iC<0||iA<0){ toast("Use a CSV exported from Duit (needs Date, Category and Amount columns)."); return; }
+    if(iD<0||iC<0||iA<0){ toast(t("csvInvalidFormat")); return; }
     var existing={};
     Object.keys(state.months).forEach(function(k){ (state.months[k]||[]).forEach(function(x){
       existing[[x.date,x.cat,x.sub||"",x.amt,x.note||""].join("|")]=1; }); });
@@ -1249,14 +1422,14 @@ button{cursor:pointer}
     Object.keys(touched).forEach(persistMonth);
     if(settingsChanged) persistSettings();
     render(); renderSettings();
-    toast("Imported "+added+(added===1?" expense":" expenses")+(skipped?" · "+skipped+" skipped (duplicates or blank)":""));
+    toast(t("importedCount",{count:expensesPhrase(added)})+(skipped?t("importedSkipped",{n:skipped}):""));
   }
   $("importBtn").onclick=function(){ $("importFile").value=""; $("importFile").click(); };
   $("importFile").onchange=function(){
     var f=this.files&&this.files[0]; if(!f) return;
     var rd=new FileReader();
     rd.onload=function(){ importCsv(String(rd.result||"")); };
-    rd.onerror=function(){ toast("Couldn't read that file. Try exporting it again."); };
+    rd.onerror=function(){ toast(t("csvReadError")); };
     rd.readAsText(f);
   };
 
@@ -1290,7 +1463,7 @@ button{cursor:pointer}
       var b = el("button", k==="del" ? "keypad-key keypad-del" : "keypad-key");
       b.type = "button";
       if(k==="del"){
-        b.setAttribute("aria-label","Delete");
+        b.setAttribute("aria-label",t("delete"));
         b.textContent = "⌫";
         b.onclick = opts.onDelete;
       } else {
@@ -1345,14 +1518,14 @@ button{cursor:pointer}
           LOCK.lockUntil = Date.now() + sec*1000;
           startLockCountdown(sec);
         } else {
-          $("lockErr").textContent = "Incorrect PIN. Try again.";
+          $("lockErr").textContent = t("incorrectPinRetry");
         }
       }
     });
   }
   function startLockCountdown(sec){
     var remaining = sec;
-    $("lockErr").textContent = "Too many attempts. Try again in "+remaining+"s.";
+    $("lockErr").textContent = t("tooManyAttempts",{n:remaining});
     clearInterval(LOCK.countdownTimer);
     LOCK.countdownTimer = setInterval(function(){
       remaining--;
@@ -1360,7 +1533,7 @@ button{cursor:pointer}
         clearInterval(LOCK.countdownTimer);
         LOCK.lockUntil=0; LOCK.attempts=0; $("lockErr").textContent="";
       } else {
-        $("lockErr").textContent = "Too many attempts. Try again in "+remaining+"s.";
+        $("lockErr").textContent = t("tooManyAttempts",{n:remaining});
       }
     },1000);
   }
@@ -1385,10 +1558,10 @@ button{cursor:pointer}
     openSheet($("pinSheet"), function(){ renderSettings(); openSheet($("setSheet")); });
   }
   function renderPinFlow(){
-    $("pinTitle").textContent = pinFlow.stage==="current" ? "Enter current PIN"
-      : pinFlow.stage==="confirm" ? "Confirm new PIN" : "Set a PIN";
-    $("pinSub").textContent = pinFlow.stage==="current" ? "Enter your current PIN to continue."
-      : pinFlow.stage==="confirm" ? "Enter it again to confirm." : "Choose a "+PIN_LEN+"-digit PIN.";
+    $("pinTitle").textContent = pinFlow.stage==="current" ? t("enterCurrentPin")
+      : pinFlow.stage==="confirm" ? t("confirmNewPin") : t("setAPin");
+    $("pinSub").textContent = pinFlow.stage==="current" ? t("enterCurrentPinHint")
+      : pinFlow.stage==="confirm" ? t("confirmPinHint") : t("choosePinHint",{n:PIN_LEN});
     renderPinDots();
     renderKeypad($("pinKeypad"), { onDigit:onPinDigit, onDelete:onPinDelete });
   }
@@ -1407,7 +1580,7 @@ button{cursor:pointer}
     if(pinFlow.stage==="current"){
       hashPin(pinFlow.entry, state.settings.pin.salt).then(function(hash){
         if(hash !== state.settings.pin.hash){
-          $("pinErr").textContent="Incorrect PIN."; pinFlow.entry=""; renderPinDots();
+          $("pinErr").textContent=t("incorrectPin"); pinFlow.entry=""; renderPinDots();
         } else {
           pinFlow.stage="new"; pinFlow.entry="";
           $("pinErr").textContent="";
@@ -1423,7 +1596,7 @@ button{cursor:pointer}
       if(pinFlow.entry !== pinFlow.first){
         pinFlow.stage="new"; pinFlow.entry=""; pinFlow.first="";
         renderPinFlow();
-        $("pinErr").textContent="PINs didn't match. Try again.";
+        $("pinErr").textContent=t("pinMismatch");
         return;
       }
       var salt = randomSaltHex();
@@ -1433,7 +1606,7 @@ button{cursor:pointer}
         persistSettings();
         pinFlow = null;
         closeSheet();
-        toast(mode==="change" ? "PIN changed" : "PIN set");
+        toast(mode==="change" ? t("pinChanged") : t("pinSet"));
       });
     }
   }
@@ -1447,7 +1620,7 @@ button{cursor:pointer}
       state.settings.pin = null;
       persistSettings();
       renderSettings();
-      toast("PIN removed");
+      toast(t("pinRemoved"));
     }
   });
   $("changePinBtn").onclick = function(){ openPinSetup("change"); };
@@ -1463,11 +1636,41 @@ button{cursor:pointer}
     toastTimer=setTimeout(function(){ $("toast").classList.remove("show"); }, undo?5000:2200);
   }
 
+  // ---------- apply localisation to static text ----------
+  var TEXT_MAP = {
+    addBtnLabel:"addExpense", lockTitle:"enterPin", lockHint:"forgotPinHint",
+    catLabel:"category", subLabel:"subcategoryOptional", noteLabel:"noteLabel", dateLabel:"dateLabel",
+    payLabel:"paidWith", delBtn:"delete", setTitle:"settings", languageLabel:"language",
+    acctSectionLabel:"account", shareSectionLabel:"sharedExpenses", shareHint:"shareHintText",
+    inviteRowLabel:"inviteRowText", inviteBtn:"invite", leaveRowLabel:"viewingShared", leaveShareBtn:"leave",
+    currencyLabel:"currencySymbol", cycleDayLabel:"cycleStartLabel", cycleDayHint:"cycleStartHint",
+    catSectionLabel:"categories", catHint:"catHintText", addCat:"add", securitySectionLabel:"security",
+    pinToggleLabel:"requirePin", changePinLabel:"changePinText", changePinBtn:"change", backupSectionLabel:"backup",
+    exportBtn:"exportCsvBtn", importBtn:"importCsvBtn", closeSettings:"done", catTitle:"editCategory",
+    catNameLabel:"name", catBudgetLabel:"monthlyBudget", colourLabel:"colour", subsSectionLabel:"subcategories",
+    addSub:"add", cancelCat:"cancel", saveCat:"saveCategory", cancelPin:"cancel", inviteTitle:"inviteSomeone",
+    inviteHint:"inviteHintText", copyInviteBtn:"copyLink", joinTitle:"joinSharedQ", joinHint:"joinHintText",
+    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo"
+  };
+  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder" };
+  var ARIA_MAP = {
+    openSettings:"settings", prevMonth:"prevMonth", nextMonth:"nextMonth", legend:"filterByCategory",
+    subLegend:"filterBySubcategory", monthSection:"monthSummary", list:"expensesAria", budgets:"budgets", amount:"amountAria"
+  };
+  function applyI18n(){
+    document.documentElement.lang = isMy() ? "my" : "en";
+    Object.keys(TEXT_MAP).forEach(function(id){ var e=$(id); if(e) e.textContent = t(TEXT_MAP[id]); });
+    Object.keys(PLACEHOLDER_MAP).forEach(function(id){ var e=$(id); if(e) e.placeholder = t(PLACEHOLDER_MAP[id]); });
+    Object.keys(ARIA_MAP).forEach(function(id){ var e=$(id); if(e) e.setAttribute("aria-label", t(ARIA_MAP[id])); });
+    $("langSelect").value = state.settings.lang||"en";
+  }
+
   // ---------- go ----------
   loadLocal();
   normalizeSettings();
   view.month = currentCycleYm();
   checkPendingJoinFromUrl();
+  applyI18n();
   render();
   if(isPinSet()) showLock();
   initCloud();
