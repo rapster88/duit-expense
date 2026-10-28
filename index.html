@@ -281,6 +281,9 @@ button{cursor:pointer}
   </div>
   <label class="field-label" for="currency">Currency symbol</label>
   <input class="text" id="currency" maxlength="5" autocomplete="off">
+  <label class="field-label" for="cycleDay">Expense cycle starts on day</label>
+  <input class="text" id="cycleDay" type="number" min="1" max="28" inputmode="numeric" autocomplete="off">
+  <p class="hint">E.g. 24 means each month runs from the 24th to the 23rd of the next. Use 1 for a normal calendar month.</p>
   <span class="field-label">Categories</span>
   <p class="hint">Tap a category to rename it, change its colour or manage its subcategories.</p>
   <div id="catList"></div>
@@ -385,16 +388,20 @@ button{cursor:pointer}
       if(!Array.isArray(c.subs)) c.subs = DEFAULT_SUBS[c.n] ? DEFAULT_SUBS[c.n].slice() : [];
       if(typeof c.budget!=="number" || !isFinite(c.budget) || c.budget<0) c.budget = 0;
     });
+    if(typeof state.settings.cycleStartDay!=="number" || !isFinite(state.settings.cycleStartDay) || state.settings.cycleStartDay<1 || state.settings.cycleStartDay>28){
+      state.settings.cycleStartDay = 1;
+    }
   }
 
-  var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null } };
-  var view = { month: ymOf(todayStr()), filter:null, subFilter:null, editing:null, cat:null, sub:null, pay:null };
+  var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null, cycleStartDay:1 } };
+  var view = { month: null, filter:null, subFilter:null, editing:null, cat:null, sub:null, pay:null };
   var draft = null;
 
   // ---------- helpers ----------
   function $(id){ return document.getElementById(id); }
   function pad(n){ return (n<10?"0":"")+n; }
   function todayStr(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function dstr(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
   function ymOf(date){ return date.slice(0,7); }
   function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -406,9 +413,30 @@ button{cursor:pointer}
     var c = state.settings.cats.find(function(x){ return x.n===name; });
     return c ? c.c : "#8A968F";
   }
+  function cycleBounds(ym){
+    var day = state.settings.cycleStartDay||1;
+    var p=ym.split("-"); var y=+p[0], mi=+p[1]-1;
+    if(day<=1) return { start:new Date(y,mi,1), end:new Date(y,mi+1,1) };
+    return { start:new Date(y,mi-1,day), end:new Date(y,mi,day) };
+  }
+  function cycleYmOf(dateStr){
+    var day = state.settings.cycleStartDay||1;
+    if(day<=1) return ymOf(dateStr);
+    var p=dateStr.split("-"); var y=+p[0], m=+p[1]-1, d=+p[2];
+    if(d>=day){ m+=1; if(m>11){ m=0; y+=1; } }
+    return y+"-"+pad(m+1);
+  }
+  function currentCycleYm(){ return cycleYmOf(todayStr()); }
   function monthName(ym){
-    var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1, 1);
-    return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    var day = state.settings.cycleStartDay||1;
+    if(day<=1){
+      var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1, 1);
+      return d.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
+    }
+    var b = cycleBounds(ym);
+    var endInclusive = new Date(b.end.getFullYear(), b.end.getMonth(), b.end.getDate()-1);
+    var fmt = function(d){ return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"}); };
+    return fmt(b.start)+" – "+fmt(endInclusive)+" "+endInclusive.getFullYear();
   }
   function shiftMonth(ym,delta){
     var p=ym.split("-"); var d=new Date(+p[0], +p[1]-1+delta, 1);
@@ -733,13 +761,19 @@ button{cursor:pointer}
   $("cancelJoin").onclick = function(){ pendingJoinCode=null; closeSheet(); };
 
   // ---------- rendering ----------
-  function monthItems(ym){ return (state.months[ym]||[]).slice(); }
+  function monthItems(ym){
+    var b = cycleBounds(ym);
+    var startStr = dstr(b.start), endStr = dstr(b.end);
+    var startYm = ymOf(startStr), endYm = ymOf(endStr);
+    var items = (state.months[startYm]||[]).concat(endYm!==startYm ? (state.months[endYm]||[]) : []);
+    return items.filter(function(x){ return x.date>=startStr && x.date<endStr; });
+  }
 
   function render(){
     var items = monthItems(view.month);
     var cur = state.settings.currency || "";
     $("monthLabel").textContent = monthName(view.month);
-    $("nextMonth").disabled = view.month >= ymOf(todayStr());
+    $("nextMonth").disabled = view.month >= currentCycleYm();
     $("nextMonth").style.visibility = $("nextMonth").disabled ? "hidden" : "visible";
 
     var byCat = {}, total = 0;
@@ -917,7 +951,7 @@ button{cursor:pointer}
     $("tillCur").textContent = state.settings.currency||"";
     $("amount").value = x ? (x.amt/100).toFixed(2) : "";
     $("note").value = x ? (x.note||"") : "";
-    var defDate = view.month===ymOf(todayStr()) ? todayStr() : view.month+"-01";
+    var defDate = view.month===currentCycleYm() ? todayStr() : dstr(cycleBounds(view.month).start);
     $("date").value = x ? x.date : defDate;
     $("date").max = todayStr();
     $("expErr").textContent="";
@@ -952,8 +986,9 @@ button{cursor:pointer}
     (state.months[newKey] = state.months[newKey]||[]).push(item);
     persistMonth(newKey);
     if(state.settings.lastCat!==view.cat){ state.settings.lastCat=view.cat; persistSettings(); }
-    if(view.month!==newKey){ view.filter=null; view.subFilter=null; }
-    view.month = newKey;
+    var newCycleYm = cycleYmOf(date);
+    if(view.month!==newCycleYm){ view.filter=null; view.subFilter=null; }
+    view.month = newCycleYm;
     closeSheet(); render();
     toast(old ? "Changes saved" : "Expense saved");
   }
@@ -979,6 +1014,7 @@ button{cursor:pointer}
   // ---------- settings ----------
   function renderSettings(){
     $("currency").value = state.settings.currency||"";
+    $("cycleDay").value = state.settings.cycleStartDay||1;
     var box=$("catList"); box.textContent="";
     state.settings.cats.forEach(function(c,i){
       var r=el("button","set-row cat-row"); r.type="button";
@@ -1016,6 +1052,16 @@ button{cursor:pointer}
   $("closeSettings").onclick=closeSheet;
   $("currency").addEventListener("change",function(){
     state.settings.currency=$("currency").value.trim(); persistSettings(); render();
+  });
+  $("cycleDay").addEventListener("change",function(){
+    var n = parseInt($("cycleDay").value,10);
+    if(!isFinite(n) || n<1) n=1;
+    if(n>28) n=28;
+    $("cycleDay").value = n;
+    state.settings.cycleStartDay = n;
+    persistSettings();
+    view.month = currentCycleYm(); view.filter=null; view.subFilter=null;
+    render();
   });
   function addCategory(){
     var n=$("newCat").value.trim(); if(!n) return;
@@ -1420,6 +1466,7 @@ button{cursor:pointer}
   // ---------- go ----------
   loadLocal();
   normalizeSettings();
+  view.month = currentCycleYm();
   checkPendingJoinFromUrl();
   render();
   if(isPinSet()) showLock();
