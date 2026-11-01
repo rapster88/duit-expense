@@ -200,6 +200,7 @@ button{cursor:pointer}
     <div class="strip" id="strip" aria-hidden="true"></div>
     <div class="legend" id="legend" role="group" aria-label="Filter by category"></div>
     <div class="legend subs" id="subLegend" role="group" aria-label="Filter by subcategory" hidden></div>
+    <div class="legend" id="tagLegend" role="group" aria-label="Filter by tag" hidden></div>
   </section>
 
   <section class="budgets" id="budgets" aria-label="Budgets" hidden></section>
@@ -251,6 +252,13 @@ button{cursor:pointer}
       <span class="field-label" id="payLabel">Paid with (optional)</span>
       <div class="seg" id="payPick" role="radiogroup" aria-labelledby="payLabel"></div>
     </div>
+  </div>
+  <span class="field-label" id="tagsLabel">Tags (optional)</span>
+  <div class="cats" id="tagPick" role="group" aria-labelledby="tagsLabel"></div>
+  <div class="cats subpick" id="tagSuggest" role="group" aria-labelledby="tagsLabel" hidden></div>
+  <div class="add-cat" style="margin-top:0">
+    <input class="text" id="newTag" maxlength="24" placeholder="Add tag" autocomplete="off">
+    <button class="ghost" id="addTagBtn">Add</button>
   </div>
   <div class="err" id="expErr" role="alert"></div>
   <div class="actions">
@@ -453,7 +461,8 @@ button{cursor:pointer}
       storageQuotaFull:"Account storage is full. Export a CSV backup, then delete old months.",
       syncFailedCached:"Couldn't sync just now. It's saved on this device.",
       syncFailedSaved:"Couldn't save to your account. Saving on this device instead.",
-      unspecified:"Unspecified"
+      unspecified:"Unspecified",
+      tagsLabel:"Tags (optional)", addTagPlaceholder:"Add tag", filterByTag:"Filter by tag"
     },
     my: {
       addExpense:"စရိတ်ထည့်ရန်", settings:"ဆက်တင်များ", prevMonth:"ယခင်လ", nextMonth:"နောက်လ",
@@ -517,7 +526,8 @@ button{cursor:pointer}
       storageQuotaFull:"အကောင့်သိုလှောင်မှု ပြည့်နေပါပြီ။ CSV အရန်သိမ်းမှု ထုတ်ယူပြီး ဟောင်းသောလများကို ဖျက်ပါ။",
       syncFailedCached:"ယခု စင့်ခ်လုပ်၍ မရပါ။ ဤစက်တွင် သိမ်းထားပါပြီ။",
       syncFailedSaved:"သင့်အကောင့်သို့ သိမ်း၍ မရပါ။ ဤစက်တွင်သာ သိမ်းဆည်းပါမည်။",
-      unspecified:"သတ်မှတ်မထား"
+      unspecified:"သတ်မှတ်မထား",
+      tagsLabel:"တဂ်များ (ချန်လှပ်နိုင်သည်)", addTagPlaceholder:"တဂ်ထည့်ရန်", filterByTag:"တဂ်အလိုက် စစ်ထုတ်ရန်"
     }
   };
   function isMy(){ return (state.settings.lang||"en")==="my"; }
@@ -560,7 +570,7 @@ button{cursor:pointer}
   }
 
   var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null, cycleStartDay:1, lang:"en" } };
-  var view = { month: null, filter:null, subFilter:null, editing:null, cat:null, sub:null, pay:null };
+  var view = { month: null, filter:null, subFilter:null, tagFilter:null, editing:null, cat:null, sub:null, pay:null, tags:[] };
   var draft = null;
 
   // ---------- helpers ----------
@@ -943,17 +953,25 @@ button{cursor:pointer}
 
     var byCat = {}, total = 0;
     items.forEach(function(x){ byCat[x.cat]=(byCat[x.cat]||0)+x.amt; total+=x.amt; });
+    var byTag = {};
+    items.forEach(function(x){ (x.tags||[]).forEach(function(tg){ byTag[tg]=(byTag[tg]||0)+x.amt; }); });
     var inCat = view.filter ? items.filter(function(x){ return x.cat===view.filter; }) : items;
     var bySub = {};
     inCat.forEach(function(x){ var k=x.sub||"Unspecified"; bySub[k]=(bySub[k]||0)+x.amt; });
     if(view.subFilter && !bySub[view.subFilter]) view.subFilter=null;
     var shown = view.subFilter ? inCat.filter(function(x){ return (x.sub||"Unspecified")===view.subFilter; }) : inCat;
+    if(view.tagFilter && !byTag[view.tagFilter]) view.tagFilter=null;
+    if(view.tagFilter) shown = shown.filter(function(x){ return (x.tags||[]).indexOf(view.tagFilter)>=0; });
     var shownTotal = shown.reduce(function(a,x){ return a+x.amt; },0);
-    var label = view.filter ? view.filter + (view.subFilter ? " › "+(view.subFilter==="Unspecified"?t("unspecified"):view.subFilter) : "") : "";
+    var labelParts = [];
+    if(view.filter) labelParts.push(view.filter + (view.subFilter ? " › "+(view.subFilter==="Unspecified"?t("unspecified"):view.subFilter) : ""));
+    if(view.tagFilter) labelParts.push("#"+view.tagFilter);
+    var label = labelParts.join(" + ");
+    var anyFilter = !!(view.filter || view.tagFilter);
 
     var totalEl = $("total"); totalEl.textContent="";
     totalEl.appendChild(el("span","cur",cur)); totalEl.appendChild(document.createTextNode(money(shownTotal)));
-    $("sub").textContent = view.filter
+    $("sub").textContent = anyFilter
       ? label + " · " + expensesPhrase(shown.length) + " " + t("ofTotal",{cur:cur, total:money(total)})
       : expensesPhrase(items.length) + " " + t("thisMonth");
 
@@ -991,6 +1009,19 @@ button{cursor:pointer}
         sl.appendChild(b);
       });
     }
+    var tl = $("tagLegend"); tl.textContent="";
+    var tagKeys = Object.keys(byTag).sort(function(a,b){ return byTag[b]-byTag[a]; });
+    tl.hidden = !tagKeys.length;
+    tl.classList.toggle("filtering", !!view.tagFilter);
+    if(tagKeys.length){
+      tagKeys.forEach(function(tg){
+        var b=el("button","chip"); b.type="button";
+        b.setAttribute("aria-pressed", String(view.tagFilter===tg));
+        b.appendChild(el("span",null,"#"+tg)); b.appendChild(el("span","amt num",money(byTag[tg])));
+        b.onclick=function(){ view.tagFilter = view.tagFilter===tg ? null : tg; render(); };
+        tl.appendChild(b);
+      });
+    }
 
     renderBudgets(byCat, cur);
 
@@ -1016,7 +1047,8 @@ button{cursor:pointer}
         var w=el("span","what"); var cn=el("div","cat",x.cat);
         if(x.sub){ cn.appendChild(el("span","subname"," › "+x.sub)); }
         w.appendChild(cn);
-        var meta=[x.note,payLabel(x.pay)].filter(Boolean).join(" · ");
+        var tagsText = (x.tags||[]).map(function(tg){ return "#"+tg; }).join(" ");
+        var meta=[x.note,payLabel(x.pay),tagsText].filter(Boolean).join(" · ");
         if(meta) w.appendChild(el("div","note",meta));
         if(members.length>1 && x.by){
           w.appendChild(el("div","note",t("addedBy",{who: x.by===userId ? t("you") : (x.byName||t("someoneElse"))})));
@@ -1104,12 +1136,51 @@ button{cursor:pointer}
     });
   }
 
+  function allTags(){
+    var counts={};
+    Object.keys(state.months).forEach(function(k){
+      (state.months[k]||[]).forEach(function(x){
+        (x.tags||[]).forEach(function(tg){ counts[tg]=(counts[tg]||0)+1; });
+      });
+    });
+    return Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  }
+  function addTagToDraft(raw){
+    var tg = String(raw||"").trim().toLowerCase();
+    if(!tg) return;
+    if(view.tags.indexOf(tg)<0) view.tags.push(tg);
+    renderTagPick();
+  }
+  function renderTagPick(){
+    var box=$("tagPick"); box.textContent="";
+    view.tags.forEach(function(tg){
+      var b=el("button","chip",tg+" ×"); b.type="button";
+      b.setAttribute("aria-label", t("removeLabel")+" "+tg);
+      b.onclick=function(){ view.tags=view.tags.filter(function(x){ return x!==tg; }); renderTagPick(); };
+      box.appendChild(b);
+    });
+    var sugg=$("tagSuggest");
+    var suggestions = allTags().filter(function(tg){ return view.tags.indexOf(tg)<0; }).slice(0,8);
+    sugg.textContent="";
+    sugg.hidden = !suggestions.length;
+    suggestions.forEach(function(tg){
+      var b=el("button","chip",tg); b.type="button";
+      b.onclick=function(){ addTagToDraft(tg); };
+      sugg.appendChild(b);
+    });
+  }
+  $("addTagBtn").onclick=function(){ addTagToDraft($("newTag").value); $("newTag").value=""; $("newTag").focus(); };
+  $("newTag").addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ e.preventDefault(); addTagToDraft($("newTag").value); $("newTag").value=""; }
+  });
+
   function openExpense(x){
     view.editing = x || null;
     var cats = state.settings.cats.map(function(c){ return c.n; });
     view.cat = x ? x.cat : (cats.indexOf(state.settings.lastCat)>-1 ? state.settings.lastCat : cats[0]);
     view.pay = x ? (x.pay||null) : null;
     view.sub = x ? (x.sub||null) : null;
+    view.tags = x && Array.isArray(x.tags) ? x.tags.slice() : [];
     $("expTitle").textContent = x ? t("editExpense") : t("addExpense");
     $("saveBtn").textContent = x ? t("saveChanges") : t("saveExpense");
     $("delBtn").hidden = !x;
@@ -1119,8 +1190,9 @@ button{cursor:pointer}
     var defDate = view.month===currentCycleYm() ? todayStr() : dstr(cycleBounds(view.month).start);
     $("date").value = x ? x.date : defDate;
     $("date").max = todayStr();
+    $("newTag").value = "";
     $("expErr").textContent="";
-    renderCatPick(); renderPayPick();
+    renderCatPick(); renderPayPick(); renderTagPick();
     openSheet($("expSheet"));
     setTimeout(function(){ $("amount").focus(); }, 60);
   }
@@ -1139,7 +1211,7 @@ button{cursor:pointer}
     var date = $("date").value || todayStr();
     var note = $("note").value.trim();
     var old = view.editing;
-    var item = { id: old?old.id:uid(), amt:amt, cat:view.cat, sub:view.sub||"", note:note, date:date, pay:view.pay||"", ts: old?old.ts:Date.now(),
+    var item = { id: old?old.id:uid(), amt:amt, cat:view.cat, sub:view.sub||"", note:note, date:date, pay:view.pay||"", tags:view.tags.slice(), ts: old?old.ts:Date.now(),
       by: old ? (old.by||null) : (userId||null),
       byName: old ? (old.byName||"") : ((currentUser && (currentUser.displayName||currentUser.email))||"") };
     var newKey = ymOf(date);
@@ -1354,7 +1426,7 @@ button{cursor:pointer}
     var all=[]; Object.keys(state.months).forEach(function(k){ all=all.concat(state.months[k]||[]); });
     if(!all.length){ toast(t("noExpensesToExport")); return; }
     all.sort(function(a,b){ return a.date===b.date ? a.ts-b.ts : (a.date<b.date?-1:1); });
-    var rows=[["Date","Category","Subcategory","Amount","Payment","Note"]].concat(all.map(function(x){ return [x.date,x.cat,x.sub||"",(x.amt/100).toFixed(2),x.pay||"",x.note||""]; }));
+    var rows=[["Date","Category","Subcategory","Amount","Payment","Note","Tags"]].concat(all.map(function(x){ return [x.date,x.cat,x.sub||"",(x.amt/100).toFixed(2),x.pay||"",x.note||"",(x.tags||[]).join("; ")]; }));
     var csv=rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
     var name="duit-expenses-"+todayStr()+".csv";
     var fallback=function(){
@@ -1395,7 +1467,7 @@ button{cursor:pointer}
     if(rows.length<2){ toast(t("csvNoExpenses")); return; }
     var head=rows[0].map(function(h){ return h.trim().toLowerCase(); });
     var col=function(n){ return head.indexOf(n); };
-    var iD=col("date"), iC=col("category"), iS=col("subcategory"), iA=col("amount"), iP=col("payment"), iN=col("note");
+    var iD=col("date"), iC=col("category"), iS=col("subcategory"), iA=col("amount"), iP=col("payment"), iN=col("note"), iT=col("tags");
     if(iD<0||iC<0||iA<0){ toast(t("csvInvalidFormat")); return; }
     var existing={};
     Object.keys(state.months).forEach(function(k){ (state.months[k]||[]).forEach(function(x){
@@ -1405,6 +1477,7 @@ button{cursor:pointer}
       var date=(r[iD]||"").trim(), cat=(r[iC]||"").trim(), amt=parseAmount(r[iA]||"");
       if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !cat || amt<=0){ skipped++; return; }
       var sub=iS>-1?(r[iS]||"").trim():"", pay=iP>-1?(r[iP]||"").trim():"", note=iN>-1?(r[iN]||"").trim():"";
+      var tags=iT>-1 ? (r[iT]||"").split(";").map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean) : [];
       var key=[date,cat,sub,amt,note].join("|");
       if(existing[key]){ skipped++; return; }
       existing[key]=1;
@@ -1416,7 +1489,7 @@ button{cursor:pointer}
       }
       if(sub && c.subs.indexOf(sub)<0){ c.subs.push(sub); settingsChanged=true; }
       var m=ymOf(date);
-      (state.months[m]=state.months[m]||[]).push({id:uid(),amt:amt,cat:cat,sub:sub,note:note,date:date,pay:pay,ts:base+idx});
+      (state.months[m]=state.months[m]||[]).push({id:uid(),amt:amt,cat:cat,sub:sub,note:note,date:date,pay:pay,tags:tags,ts:base+idx});
       touched[m]=1; added++;
     });
     Object.keys(touched).forEach(persistMonth);
@@ -1650,12 +1723,12 @@ button{cursor:pointer}
     catNameLabel:"name", catBudgetLabel:"monthlyBudget", colourLabel:"colour", subsSectionLabel:"subcategories",
     addSub:"add", cancelCat:"cancel", saveCat:"saveCategory", cancelPin:"cancel", inviteTitle:"inviteSomeone",
     inviteHint:"inviteHintText", copyInviteBtn:"copyLink", joinTitle:"joinSharedQ", joinHint:"joinHintText",
-    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo"
+    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add"
   };
-  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder" };
+  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder" };
   var ARIA_MAP = {
     openSettings:"settings", prevMonth:"prevMonth", nextMonth:"nextMonth", legend:"filterByCategory",
-    subLegend:"filterBySubcategory", monthSection:"monthSummary", list:"expensesAria", budgets:"budgets", amount:"amountAria"
+    subLegend:"filterBySubcategory", tagLegend:"filterByTag", monthSection:"monthSummary", list:"expensesAria", budgets:"budgets", amount:"amountAria"
   };
   function applyI18n(){
     document.documentElement.lang = isMy() ? "my" : "en";
