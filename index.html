@@ -570,7 +570,7 @@ button{cursor:pointer}
   }
 
   var state = { months:{}, settings:{ currency:"RM", cats:DEFAULT_CATS.slice(), lastCat:"Food", pin:null, cycleStartDay:1, lang:"en" } };
-  var view = { month: null, filter:null, subFilter:null, tagFilter:null, editing:null, cat:null, sub:null, pay:null, tags:[] };
+  var view = { month: null, filter:null, subFilter:null, tagFilters:[], editing:null, cat:null, sub:null, pay:null, tags:[] };
   var draft = null;
 
   // ---------- helpers ----------
@@ -960,14 +960,14 @@ button{cursor:pointer}
     inCat.forEach(function(x){ var k=x.sub||"Unspecified"; bySub[k]=(bySub[k]||0)+x.amt; });
     if(view.subFilter && !bySub[view.subFilter]) view.subFilter=null;
     var shown = view.subFilter ? inCat.filter(function(x){ return (x.sub||"Unspecified")===view.subFilter; }) : inCat;
-    if(view.tagFilter && !byTag[view.tagFilter]) view.tagFilter=null;
-    if(view.tagFilter) shown = shown.filter(function(x){ return (x.tags||[]).indexOf(view.tagFilter)>=0; });
+    view.tagFilters = view.tagFilters.filter(function(tg){ return byTag[tg]; });
+    if(view.tagFilters.length) shown = shown.filter(function(x){ return (x.tags||[]).some(function(tg){ return view.tagFilters.indexOf(tg)>=0; }); });
     var shownTotal = shown.reduce(function(a,x){ return a+x.amt; },0);
     var labelParts = [];
     if(view.filter) labelParts.push(view.filter + (view.subFilter ? " › "+(view.subFilter==="Unspecified"?t("unspecified"):view.subFilter) : ""));
-    if(view.tagFilter) labelParts.push("#"+view.tagFilter);
+    if(view.tagFilters.length) labelParts.push(view.tagFilters.map(function(tg){ return "#"+tg; }).join(" "));
     var label = labelParts.join(" + ");
-    var anyFilter = !!(view.filter || view.tagFilter);
+    var anyFilter = !!(view.filter || view.tagFilters.length);
 
     var totalEl = $("total"); totalEl.textContent="";
     totalEl.appendChild(el("span","cur",cur)); totalEl.appendChild(document.createTextNode(money(shownTotal)));
@@ -1012,13 +1012,17 @@ button{cursor:pointer}
     var tl = $("tagLegend"); tl.textContent="";
     var tagKeys = Object.keys(byTag).sort(function(a,b){ return byTag[b]-byTag[a]; });
     tl.hidden = !tagKeys.length;
-    tl.classList.toggle("filtering", !!view.tagFilter);
+    tl.classList.toggle("filtering", !!view.tagFilters.length);
     if(tagKeys.length){
       tagKeys.forEach(function(tg){
         var b=el("button","chip"); b.type="button";
-        b.setAttribute("aria-pressed", String(view.tagFilter===tg));
+        b.setAttribute("aria-pressed", String(view.tagFilters.indexOf(tg)>=0));
         b.appendChild(el("span",null,"#"+tg)); b.appendChild(el("span","amt num",money(byTag[tg])));
-        b.onclick=function(){ view.tagFilter = view.tagFilter===tg ? null : tg; render(); };
+        b.onclick=function(){
+          var idx = view.tagFilters.indexOf(tg);
+          if(idx>=0) view.tagFilters.splice(idx,1); else view.tagFilters.push(tg);
+          render();
+        };
         tl.appendChild(b);
       });
     }
