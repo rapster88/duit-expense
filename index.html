@@ -269,6 +269,10 @@ button{cursor:pointer}
     <button class="ghost" id="addTagBtn">Add</button>
   </div>
   <div class="err" id="expErr" role="alert"></div>
+  <div class="set-row" id="keepAddingRow">
+    <span id="keepAddingLabel">Add another after saving</span>
+    <input type="checkbox" id="keepAdding" role="switch" aria-checked="false">
+  </div>
   <div class="actions">
     <button class="ghost danger" id="delBtn" hidden>Delete</button>
     <button class="primary" id="saveBtn">Save expense</button>
@@ -470,7 +474,8 @@ button{cursor:pointer}
       syncFailedCached:"Couldn't sync just now. It's saved on this device.",
       syncFailedSaved:"Couldn't save to your account. Saving on this device instead.",
       unspecified:"Unspecified",
-      tagsLabel:"Tags (optional)", addTagPlaceholder:"Add tag", filterByTag:"Filter by tag"
+      tagsLabel:"Tags (optional)", addTagPlaceholder:"Add tag", filterByTag:"Filter by tag",
+      keepAddingLabel:"Add another after saving"
     },
     my: {
       addExpense:"စရိတ်ထည့်ရန်", settings:"ဆက်တင်များ", prevMonth:"ယခင်လ", nextMonth:"နောက်လ",
@@ -535,7 +540,8 @@ button{cursor:pointer}
       syncFailedCached:"ယခု စင့်ခ်လုပ်၍ မရပါ။ ဤစက်တွင် သိမ်းထားပါပြီ။",
       syncFailedSaved:"သင့်အကောင့်သို့ သိမ်း၍ မရပါ။ ဤစက်တွင်သာ သိမ်းဆည်းပါမည်။",
       unspecified:"သတ်မှတ်မထား",
-      tagsLabel:"တဂ်များ (ချန်လှပ်နိုင်သည်)", addTagPlaceholder:"တဂ်ထည့်ရန်", filterByTag:"တဂ်အလိုက် စစ်ထုတ်ရန်"
+      tagsLabel:"တဂ်များ (ချန်လှပ်နိုင်သည်)", addTagPlaceholder:"တဂ်ထည့်ရန်", filterByTag:"တဂ်အလိုက် စစ်ထုတ်ရန်",
+      keepAddingLabel:"သိမ်းပြီးနောက် နောက်ထပ်ထည့်ရန်"
     }
   };
   function isMy(){ return (state.settings.lang||"en")==="my"; }
@@ -1238,6 +1244,9 @@ button{cursor:pointer}
     if(e.key==="Enter"){ e.preventDefault(); addTagToDraft($("newTag").value); $("newTag").value=""; }
   });
 
+  var keepAddingMode = false;
+  $("keepAdding").addEventListener("change",function(){ keepAddingMode = $("keepAdding").checked; });
+
   function openExpense(x){
     view.editing = x || null;
     var cats = state.settings.cats.map(function(c){ return c.n; });
@@ -1256,6 +1265,8 @@ button{cursor:pointer}
     $("date").max = todayStr();
     $("newTag").value = "";
     $("newCatRow").hidden = true;
+    $("keepAddingRow").hidden = !!x;
+    $("keepAdding").checked = keepAddingMode;
     $("expErr").textContent="";
     renderCatPick(); renderPayPick(); renderTagPick();
     openSheet($("expSheet"));
@@ -1291,8 +1302,23 @@ button{cursor:pointer}
     var newCycleYm = cycleYmOf(date);
     if(view.month!==newCycleYm){ view.filter=null; view.subFilter=null; }
     view.month = newCycleYm;
-    closeSheet(); render();
-    toast(old ? t("changesSaved") : t("expenseSaved"));
+    render();
+    if(!old && keepAddingMode){
+      resetExpenseFormForNext();
+      toast(t("expenseSaved"));
+    } else {
+      closeSheet();
+      toast(old ? t("changesSaved") : t("expenseSaved"));
+    }
+  }
+  function resetExpenseFormForNext(){
+    $("amount").value = "";
+    $("note").value = "";
+    view.tags = [];
+    $("newTag").value = "";
+    $("expErr").textContent = "";
+    renderTagPick();
+    setTimeout(function(){ $("amount").focus(); }, 30);
   }
 
   function deleteExpense(){
@@ -1788,7 +1814,8 @@ button{cursor:pointer}
     catNameLabel:"name", catBudgetLabel:"monthlyBudget", colourLabel:"colour", subsSectionLabel:"subcategories",
     addSub:"add", cancelCat:"cancel", saveCat:"saveCategory", cancelPin:"cancel", inviteTitle:"inviteSomeone",
     inviteHint:"inviteHintText", copyInviteBtn:"copyLink", joinTitle:"joinSharedQ", joinHint:"joinHintText",
-    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add", expAddCatBtn:"add", expAddSubBtn:"add"
+    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add", expAddCatBtn:"add", expAddSubBtn:"add",
+    keepAddingLabel:"keepAddingLabel"
   };
   var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder", expNewCat:"newCategoryPlaceholder", expNewSub:"newSubcategoryPlaceholder" };
   var ARIA_MAP = {
