@@ -237,6 +237,10 @@ button{cursor:pointer}
   </label>
   <span class="field-label" id="catLabel">Category</span>
   <div class="cats" id="catPick" role="radiogroup" aria-labelledby="catLabel"></div>
+  <div class="add-cat" id="newCatRow" hidden>
+    <input class="text" id="expNewCat" maxlength="24" placeholder="New category" autocomplete="off">
+    <button class="ghost" id="expAddCatBtn">Add</button>
+  </div>
   <div id="subWrap" hidden>
     <span class="field-label" id="subLabel">Subcategory (optional)</span>
     <div class="cats subpick" id="subPick" role="radiogroup" aria-labelledby="subLabel"></div>
@@ -1113,11 +1117,37 @@ button{cursor:pointer}
       var b=el("button","chip"); b.type="button"; b.setAttribute("role","radio");
       b.setAttribute("aria-checked", String(view.cat===c.n));
       var dot=el("span","dot"); dot.style.background=c.c; b.appendChild(dot); b.appendChild(el("span",null,c.n));
-      b.onclick=function(){ if(view.cat!==c.n){ view.cat=c.n; view.sub=null; } renderCatPick(); };
+      b.onclick=function(){ if(view.cat!==c.n){ view.cat=c.n; view.sub=null; } $("newCatRow").hidden=true; renderCatPick(); };
       box.appendChild(b);
     });
+    var addBtn=el("button","chip","+ "+t("newCategoryPlaceholder")); addBtn.type="button";
+    addBtn.onclick=function(){
+      $("newCatRow").hidden=false; $("expNewCat").value=""; $("expErr").textContent="";
+      setTimeout(function(){ $("expNewCat").focus(); }, 30);
+    };
+    box.appendChild(addBtn);
     renderSubPick();
   }
+  function addCategoryFromExpense(){
+    var n=$("expNewCat").value.trim(); if(!n) return;
+    if(state.settings.cats.some(function(c){ return c.n.toLowerCase()===n.toLowerCase(); })){
+      $("expErr").textContent = t("categoryExists",{name:n});
+      return;
+    }
+    var used = state.settings.cats.map(function(c){ return c.c; });
+    var color = PALETTE.find(function(p){ return used.indexOf(p)<0; }) || PALETTE[state.settings.cats.length%PALETTE.length];
+    state.settings.cats.push({n:n, c:color, subs:[], budget:0});
+    persistSettings();
+    view.cat = n; view.sub = null;
+    $("newCatRow").hidden = true;
+    $("expNewCat").value = "";
+    $("expErr").textContent = "";
+    renderCatPick();
+  }
+  $("expAddCatBtn").onclick = addCategoryFromExpense;
+  $("expNewCat").addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ e.preventDefault(); addCategoryFromExpense(); }
+  });
   function renderSubPick(){
     var c = findCat(view.cat); var subs = c ? c.subs.slice() : [];
     if(view.sub && subs.indexOf(view.sub)<0) subs.push(view.sub);
@@ -1195,6 +1225,7 @@ button{cursor:pointer}
     $("date").value = x ? x.date : defDate;
     $("date").max = todayStr();
     $("newTag").value = "";
+    $("newCatRow").hidden = true;
     $("expErr").textContent="";
     renderCatPick(); renderPayPick(); renderTagPick();
     openSheet($("expSheet"));
@@ -1727,9 +1758,9 @@ button{cursor:pointer}
     catNameLabel:"name", catBudgetLabel:"monthlyBudget", colourLabel:"colour", subsSectionLabel:"subcategories",
     addSub:"add", cancelCat:"cancel", saveCat:"saveCategory", cancelPin:"cancel", inviteTitle:"inviteSomeone",
     inviteHint:"inviteHintText", copyInviteBtn:"copyLink", joinTitle:"joinSharedQ", joinHint:"joinHintText",
-    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add"
+    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add", expAddCatBtn:"add"
   };
-  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder" };
+  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder", expNewCat:"newCategoryPlaceholder" };
   var ARIA_MAP = {
     openSettings:"settings", prevMonth:"prevMonth", nextMonth:"nextMonth", legend:"filterByCategory",
     subLegend:"filterBySubcategory", tagLegend:"filterByTag", monthSection:"monthSummary", list:"expensesAria", budgets:"budgets", amount:"amountAria"
