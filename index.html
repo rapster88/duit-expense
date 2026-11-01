@@ -244,6 +244,10 @@ button{cursor:pointer}
   <div id="subWrap" hidden>
     <span class="field-label" id="subLabel">Subcategory (optional)</span>
     <div class="cats subpick" id="subPick" role="radiogroup" aria-labelledby="subLabel"></div>
+    <div class="add-cat" id="newSubRow" hidden>
+      <input class="text" id="expNewSub" maxlength="24" placeholder="New subcategory" autocomplete="off">
+      <button class="ghost" id="expAddSubBtn">Add</button>
+    </div>
   </div>
   <label class="field-label" for="note" id="noteLabel">Note (optional)</label>
   <input class="text" id="note" maxlength="120" placeholder="e.g. nasi lemak with team" autocomplete="off">
@@ -1151,15 +1155,41 @@ button{cursor:pointer}
   function renderSubPick(){
     var c = findCat(view.cat); var subs = c ? c.subs.slice() : [];
     if(view.sub && subs.indexOf(view.sub)<0) subs.push(view.sub);
-    $("subWrap").hidden = !subs.length;
+    $("subWrap").hidden = !view.cat;
+    $("newSubRow").hidden = true;
     var box=$("subPick"); box.textContent="";
     subs.forEach(function(sn){
       var b=el("button","chip",sn); b.type="button"; b.setAttribute("role","radio");
       b.setAttribute("aria-checked", String(view.sub===sn));
-      b.onclick=function(){ view.sub = view.sub===sn ? null : sn; renderSubPick(); };
+      b.onclick=function(){ view.sub = view.sub===sn ? null : sn; $("newSubRow").hidden=true; renderSubPick(); };
       box.appendChild(b);
     });
+    var addBtn=el("button","chip","+ "+t("newSubcategoryPlaceholder")); addBtn.type="button";
+    addBtn.onclick=function(){
+      $("newSubRow").hidden=false; $("expNewSub").value=""; $("expErr").textContent="";
+      setTimeout(function(){ $("expNewSub").focus(); }, 30);
+    };
+    box.appendChild(addBtn);
   }
+  function addSubFromExpense(){
+    var n=$("expNewSub").value.trim(); if(!n) return;
+    var c=findCat(view.cat); if(!c) return;
+    if(c.subs.some(function(s){ return s.toLowerCase()===n.toLowerCase(); })){
+      $("expErr").textContent = t("subExists",{name:n});
+      return;
+    }
+    c.subs.push(n);
+    persistSettings();
+    view.sub = n;
+    $("newSubRow").hidden = true;
+    $("expNewSub").value = "";
+    $("expErr").textContent = "";
+    renderSubPick();
+  }
+  $("expAddSubBtn").onclick = addSubFromExpense;
+  $("expNewSub").addEventListener("keydown",function(e){
+    if(e.key==="Enter"){ e.preventDefault(); addSubFromExpense(); }
+  });
   function renderPayPick(){
     var box=$("payPick"); box.textContent="";
     PAYS.forEach(function(p){
@@ -1758,9 +1788,9 @@ button{cursor:pointer}
     catNameLabel:"name", catBudgetLabel:"monthlyBudget", colourLabel:"colour", subsSectionLabel:"subcategories",
     addSub:"add", cancelCat:"cancel", saveCat:"saveCategory", cancelPin:"cancel", inviteTitle:"inviteSomeone",
     inviteHint:"inviteHintText", copyInviteBtn:"copyLink", joinTitle:"joinSharedQ", joinHint:"joinHintText",
-    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add", expAddCatBtn:"add"
+    cancelJoin:"cancel", confirmJoin:"join", toastAct:"undo", tagsLabel:"tagsLabel", addTagBtn:"add", expAddCatBtn:"add", expAddSubBtn:"add"
   };
-  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder", expNewCat:"newCategoryPlaceholder" };
+  var PLACEHOLDER_MAP = { note:"notePlaceholder", newCat:"newCategoryPlaceholder", newSub:"newSubcategoryPlaceholder", newTag:"addTagPlaceholder", expNewCat:"newCategoryPlaceholder", expNewSub:"newSubcategoryPlaceholder" };
   var ARIA_MAP = {
     openSettings:"settings", prevMonth:"prevMonth", nextMonth:"nextMonth", legend:"filterByCategory",
     subLegend:"filterBySubcategory", tagLegend:"filterByTag", monthSection:"monthSummary", list:"expensesAria", budgets:"budgets", amount:"amountAria"
